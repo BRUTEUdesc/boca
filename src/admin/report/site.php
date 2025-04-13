@@ -30,54 +30,57 @@ echo "        <td nowrap width=\"50%\" align=right>Start date (contest=" . datec
 echo "<td width=\"50%\"><b>" . dateconv($st["sitestartdate"]) . "</b></td>\n";
 echo "<tr>";
 if (!$st["siterunning"]) {
-	echo "      <tr>\n";
-	echo "        <td nowrap width=\"50%\" align=right><b>Finished at:</b></td>\n";
-	echo "        <td width=\"50%\"><b>" . dateconv($st["siteendeddate"]); 
-	if($st["siteautoended"]) echo " (auto)";
-	echo "</b></td>\n";
-	echo "      </tr>\n";
-	if($st["siteautoended"]) {
-		$w = (int) ($st["siteduration"]/60);
-		$ww = $st["siteduration"] % 60;
-	}
-	else {
-		$w = (int) ($st["currenttime"]/60);
-		$ww = $st["currenttime"] % 60;
-	}
-	echo "      <tr>\n";
-	echo "        <td nowrap width=\"50%\" align=right><b>Real duration:</b></td>\n";
-	echo "        <td width=\"50%\"><b>$w minutes";
-	if($ww != 0)	echo " plus $ww seconds";
-	echo "</b></td>\n";
-	echo "      </tr>\n";
+    echo "      <tr>\n";
+    echo "        <td nowrap width=\"50%\" align=right><b>Finished at:</b></td>\n";
+    echo "        <td width=\"50%\"><b>" . dateconv($st["siteendeddate"]);
+    if ($st["siteautoended"]) {
+        echo " (auto)";
+    }
+    echo "</b></td>\n";
+    echo "      </tr>\n";
+    if ($st["siteautoended"]) {
+        $w = (int) ($st["siteduration"] / 60);
+        $ww = $st["siteduration"] % 60;
+    } else {
+        $w = (int) ($st["currenttime"] / 60);
+        $ww = $st["currenttime"] % 60;
+    }
+    echo "      <tr>\n";
+    echo "        <td nowrap width=\"50%\" align=right><b>Real duration:</b></td>\n";
+    echo "        <td width=\"50%\"><b>$w minutes";
+    if ($ww != 0) {
+        echo " plus $ww seconds";
+    }
+    echo "</b></td>\n";
+    echo "      </tr>\n";
 }
 echo "<tr>\n";
 echo "        <td width=\"50%\" align=right>Planned Duration (contest=";
-echo $ct["contestduration"]/60;
+echo $ct["contestduration"] / 60;
 echo "):</td>";
 ?>
         <td width="50%">
-          <?php echo $st["siteduration"]/60; ?>
+          <?php echo $st["siteduration"] / 60; ?>
         </td>
       </tr>
       <tr>
 <?php
 echo "        <td width=\"50%\" align=right>Stop answering (contest=";
-echo $ct["contestlastmileanswer"]/60;
+echo $ct["contestlastmileanswer"] / 60;
 echo "):</td>";
 ?>
         <td width="50%">
-          <?php echo $st["sitelastmileanswer"]/60; ?>
+          <?php echo $st["sitelastmileanswer"] / 60; ?>
         </td>
       </tr>
       <tr>
 <?php
 echo "        <td width=\"50%\" align=right>Stop scoreboard (contest=";
-echo $ct["contestlastmilescore"]/60;
+echo $ct["contestlastmilescore"] / 60;
 echo "):</td>";
 ?>
         <td width="50%">
-          <?php echo $st["sitelastmilescore"]/60; ?>
+          <?php echo $st["sitelastmilescore"] / 60; ?>
         </td>
       </tr>
       <tr>
@@ -105,21 +108,23 @@ echo "):</td>";
 </tr>
 <?php
 $n = count($sitetime);
-for ($i=0; $i< $n; $i++) {
-  echo "<tr>";
-  echo "<td nowrap align=right>";
-  echo dateconv($sitetime[$i]["sitestartdate"]);
-  echo "</td>";
-  echo "<td nowrap align=left>";
-  if($sitetime[$i]["siteenddate"] == 0) {
-    if($st["siterunning"])
-      echo "still open";
-    else echo "auto-ended";
-  }
-  else
-    echo dateconv($sitetime[$i]["siteenddate"]);
-  echo "</td>";
-  echo "</tr>";
+for ($i = 0; $i < $n; $i++) {
+    echo "<tr>";
+    echo "<td nowrap align=right>";
+    echo dateconv($sitetime[$i]["sitestartdate"]);
+    echo "</td>";
+    echo "<td nowrap align=left>";
+    if ($sitetime[$i]["siteenddate"] == 0) {
+        if ($st["siterunning"]) {
+            echo "still open";
+        } else {
+            echo "auto-ended";
+        }
+    } else {
+        echo dateconv($sitetime[$i]["siteenddate"]);
+    }
+    echo "</td>";
+    echo "</tr>";
 }
 ?>
 </table>

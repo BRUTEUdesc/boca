@@ -1,4 +1,5 @@
 <?php
+
 ////////////////////////////////////////////////////////////////////////////////
 //BOCA Online Contest Administrator
 //    Copyright (C) 2003-2012 by BOCA Development Team (bocasystem@gmail.com)
@@ -23,4 +24,3 @@ echo "<br /><hr />\n";
 echo "<font size=\"-5\">Powered by BOCA $BOCAVERSION. Copyright (c) 2003-$YEAR BOCA System (bocasystem@gmail.com). All rights reserved.</font>\n";
 echo "</body></html>";
 exit;
-?>

@@ -16,256 +16,356 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 // Last modified 08/aug/2015 by cassio@ime.usp.br
-if (!isset($_POST["confirmation"]) || $_POST["confirmation"] != "confirm")
-	unset($_POST['noflush']);
+if (!isset($_POST["confirmation"]) || $_POST["confirmation"] != "confirm") {
+    unset($_POST['noflush']);
+}
 
 require('header.php');
-if(($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
-	ForceLoad("../index.php");
+if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
+    ForceLoad("../index.php");
+}
+
+// Caminho do arquivo de cores padrão
+$colors_file = '/var/www/boca/src/admin/default_problem_colors.json';
+// Carrega o JSON de cores (retorna array associativo)
+$default_colors = json_decode(file_get_contents($colors_file), true);
+
+$contest_path = "/var/www/boca/src/private/secretcontest/contest.pdf";
+if (file_exists($contest_path) && is_readable($contest_path)) {
+    echo "<br><b>Contest completo:</b> <a href=\"../downloadcontest.php\">contest.pdf</a>";
+    echo "<br>";
+}
 
 if (isset($_GET["delete"]) && is_numeric($_GET["delete"]) && isset($_GET["input"])) {
-	$param = array();
-	$param['number']=$_GET["delete"];
-	$param['inputfilename']=myrawurldecode($_GET["input"]);
-	if(!DBDeleteProblem ($_SESSION["usertable"]["contestnumber"], $param)) {
-		MSGError('Error deleting problem');
-		LogError('Error deleting problem');
-	}
-	ForceLoad("problem.php");
-}
-
-if(isset($_POST['Submit5']) && $_POST['Submit5']=='Build')
-	ForceLoad("buildproblem.php");
-
-if(isset($_POST['Submit5']) && $_POST['Submit5']=='Send') {
-	if(isset($_POST['basename']) &&
-	   isset($_POST['fullname']) &&
-	   isset($_POST['timelimit']) &&
-	   $_POST["confirmation"] == "confirm") {
-		if ($_FILES["probleminput"]["name"] != "") {
-			$type=myhtmlspecialchars($_FILES["probleminput"]["type"]);
-			$size=myhtmlspecialchars($_FILES["probleminput"]["size"]);
-			$name=myhtmlspecialchars($_FILES["probleminput"]["name"]);
-			$temp=myhtmlspecialchars($_FILES["probleminput"]["tmp_name"]);
-			if (!is_uploaded_file($temp)) {
-				ob_end_flush();
-				IntrusionNotify("file upload problem.");
-				ForceLoad("../index.php");
-			}
-		} else $name = "";
-		if ($_FILES["problemsol"]["name"] != "") {
-			$type1=myhtmlspecialchars($_FILES["problemsol"]["type"]);
-			$size1=myhtmlspecialchars($_FILES["problemsol"]["size"]);
-			$name1=myhtmlspecialchars($_FILES["problemsol"]["name"]);
-			$temp1=myhtmlspecialchars($_FILES["problemsol"]["tmp_name"]);
-			if (!is_uploaded_file($temp1)) {
-				ob_end_flush();
-				IntrusionNotify("file upload problem.");
-				ForceLoad("../index.php");
-			}
-		} else $name1 = "";
-		if (isset($_FILES["problemdesc"]) && $_FILES["problemdesc"]["name"] != "") {
-			$type2=myhtmlspecialchars($_FILES["problemdesc"]["type"]);
-			$size2=myhtmlspecialchars($_FILES["problemdesc"]["size"]);
-			$name2=myhtmlspecialchars($_FILES["problemdesc"]["name"]);
-			$temp2=myhtmlspecialchars($_FILES["problemdesc"]["tmp_name"]);
-			if (!is_uploaded_file($temp2)) {
-				ob_end_flush();
-				IntrusionNotify("file upload problem.");
-				ForceLoad("../index.php");
-			}
-		} else $name2 = "";
-
-		$ds = DIRECTORY_SEPARATOR;
-		if($ds=="") $ds = "/";
-		$tmpdir = getenv("TMP");
-		if($tmpdir=="") $tmpdir = getenv("TMPDIR");
-		if($tmpdir[0] != $ds) $tmdir = $ds . "tmp";
-		if($tmpdir=="") $tmpdir = $ds . "tmp";
-		$locr = $_SESSION["locr"];
-		$tfile = tempnam($tmpdir, "problem");
-		if(@mkdir($tfile . "_d", 0700)) {
-			$dir = $tfile . "_d";
-			@mkdir($dir . $ds . 'limits');
-			@mkdir($dir . $ds . 'compare');
-			@mkdir($dir . $ds . 'compile');
-			@mkdir($dir . $ds . 'run');
-			@mkdir($dir . $ds . 'input');
-			@mkdir($dir . $ds . 'output');
-			@mkdir($dir . $ds . 'tests');
-			@mkdir($dir . $ds . 'description');
-			$filea = array('compare' . $ds . 'c','compare' . $ds . 'cc','compare' . $ds . 'java','compare' . $ds . 'py2','compare' . $ds . 'py3',
-						   'compile' . $ds . 'c','compile' . $ds . 'cc','compile' . $ds . 'java','compile' . $ds . 'py2','compile' . $ds . 'py3',
-						   'run' . $ds . 'c','run' . $ds . 'cc','run' . $ds . 'java','run' . $ds . 'py2','run' . $ds . 'py3');
-			foreach($filea as $file) {
-				$rfile=$locr . $ds . '..' . $ds . 'doc' . $ds . 'problemexamples' . $ds . 'problemtemplate' . $ds . $file;
-				if(is_readable($rfile)) {
-					@copy($rfile, $dir . $ds . $file);
-				} else {
-					@unlink($tfile);
-					cleardir($dir);
-					ob_end_flush();
-					MSGError('Could not read problem template file ' . $rfile);
-					ForceLoad('problem.php');
-				}
-			}
-			$tl = explode(',',$_POST['timelimit']);
-			if(!isset($tl[1]) || !is_numeric(trim($tl[1]))) $tl[1]='1';
-			$str = "echo " . trim($tl[0]) . "\necho " . trim($tl[1]) . "\necho 512\necho " . floor(10 + $size1 / 512) . "\nexit 0\n";
-			file_put_contents($dir . $ds . 'limits' . $ds . 'c',$str);
-			file_put_contents($dir . $ds . 'limits' . $ds . 'cc',$str);
-			file_put_contents($dir . $ds . 'limits' . $ds . 'java',$str);
-            file_put_contents($dir . $ds . 'limits' . $ds . 'py2',$str);
-            file_put_contents($dir . $ds . 'limits' . $ds . 'py3',$str);
-			$str = "basename=" . trim($_POST['basename']) . "\nfullname=" . trim($_POST['fullname']);
-			if($name2) {
-				@copy($temp2, $dir . $ds . 'description' . $ds . $name2);
-				@unlink($temp2);
-				$str .= "\ndescfile=" . $name2;
-			}
-			$str .= "\n";
-			file_put_contents($dir . $ds . 'description' . $ds . 'problem.info',$str);
-			if($name && $name1) {
-				@copy($temp, $dir . $ds . 'input' . $ds . 'file1');
-				@unlink($temp);
-				@copy($temp1, $dir . $ds . 'output' . $ds . 'file1');
-				@unlink($temp1);
-			} else {
-				@unlink($tfile);
-				cleardir($dir);
-				ob_end_flush();
-				MSGError('Could not read problem input/output files');
-				ForceLoad('problem.php');
-			}
-			$ret=create_zip($dir, glob($dir . $ds . '*'),$dir . '.zip');
-			cleardir($dir);
-			if($ret <= 0) {
-				@unlink($tfile);
-				@unlink($dir . '.zip');
-				ob_end_flush();
-				MSGError('Could not write to zip file');
-				ForceLoad('problem.php');
-			}
-			$str = file_get_contents($dir . '.zip');
-			@unlink($dir . '.zip');
-			@unlink($tfile);
-			header ("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
-			header ("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
-			header ("Cache-Control: no-cache, must-revalidate");
-			header ("Pragma: no-cache");
-			header ("Content-transfer-encoding: binary\n");
-			header ("Content-type: application/force-download");
-			header ("Content-Disposition: attachment; filename=" . basename($dir . '.zip'));
-			ob_end_flush();
-			echo $str;
-			exit;
-		} else {
-			@unlink($tfile);
-			ob_end_flush();
-			MSGError('Could not write to temporary directory');
-		}
-	}
-	ForceLoad('problem.php');
-}
-
-if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) && is_numeric($_POST["problemnumber"]) && 
-    isset($_POST["problemname"]) && $_POST["problemname"] != "") {
-	if(strpos(trim($_POST["problemname"]),' ')!==false) {
-		$_POST["confirmation"]='';
-		MSGError('Problem short name cannot have spaces');
-	} else {
-	if ($_POST["confirmation"] == "confirm") {
-		if ($_FILES["probleminput"]["name"] != "") {
-			$type=myhtmlspecialchars($_FILES["probleminput"]["type"]);
-			$size=myhtmlspecialchars($_FILES["probleminput"]["size"]);
-			$name=myhtmlspecialchars($_FILES["probleminput"]["name"]);
-			$temp=myhtmlspecialchars($_FILES["probleminput"]["tmp_name"]);
-			if (!is_uploaded_file($temp)) {
-				IntrusionNotify("file upload problem.");
-				ForceLoad("../index.php");
-			}
-		} else $name = "";
-
-		$param = array();
-		$param['number'] = $_POST["problemnumber"];
-		$param['name'] = trim($_POST["problemname"]);
-		$param['inputfilename'] = $name;
-		$param['inputfilepath'] = $temp;
-		$param['fake'] = 'f';
-		$param['colorname'] = trim($_POST["colorname"]);
-		$param['color'] = trim($_POST["color"]);
-		$autojudge_value = 0;
-		if (isset ($_POST["autojudge_new_sel"]) && in_array ($_POST['autojudge_new_sel'], array ('all', 'custom', 'none'))) {
-			$all_answers = DBGetAnswers($_SESSION["usertable"]["contestnumber"]);
-			for ($g = 0; $g < count ($all_answers); $g++) {
-				if ($all_answers[$g]['fake'] == 't') continue;
-				$campo = 'autojudge_chc_new_'.$all_answers[$g]['number'];
-				
-				if ($_POST['autojudge_new_sel'] == 'all') {
-					$autojudge_value |= pow (2, $g);
-				} else if ($_POST['autojudge_new_sel'] == 'custom' && isset ($_POST[$campo]) && $_POST[$campo] == "1") {
-					$autojudge_value |= pow (2, $g);
-				}
-			}
-		}
-		$param['autojudge'] = $autojudge_value;
-		DBNewProblem ($_SESSION["usertable"]["contestnumber"], $param);
-	}
-	}
-	ForceLoad("problem.php");
-}
-
-$prob = DBGetFullProblemData($_SESSION["usertable"]["contestnumber"],true);
-for ($i=0; $i<count($prob); $i++) {
-  if($prob[$i]["fake"]!='t') {
-    if (isset($_POST["SubmitProblem" . $prob[$i]['number']]) && $_POST["SubmitProblem" . $prob[$i]['number']] == 'Update' &&
-	isset($_POST["colorname" . $prob[$i]['number']]) && strlen($_POST["colorname" . $prob[$i]['number']]) <= 100 && 
-	isset($_POST["color" . $prob[$i]['number']]) && strlen($_POST["color" . $prob[$i]['number']]) <= 6 && 
-	isset($_POST["problemname" . $prob[$i]['number']]) && $_POST["problemname" . $prob[$i]['number']] != "" && strlen($_POST["problemname" . $prob[$i]['number']]) <= 20) {
-      if(strpos(trim($_POST["problemname" . $prob[$i]['number']]),' ')!==false) {
-	MSGError('Problem short name cannot have spaces');
-      } else {
-	$param = array();
-	$param['number'] = $prob[$i]['number'];
-	$param['name'] = trim($_POST["problemname" . $prob[$i]['number']]);
-	$param['fake'] = 'f';
-	$param['colorname'] = trim($_POST["colorname" . $prob[$i]['number']]);
-	$param['color'] = trim($_POST["color" . $prob[$i]['number']]);
-	DBNewProblem ($_SESSION["usertable"]["contestnumber"], $param);
-      }
-      ForceLoad("problem.php");
+    $param = array();
+    $param['number'] = $_GET["delete"];
+    $param['inputfilename'] = myrawurldecode($_GET["input"]);
+    if (!DBDeleteProblem($_SESSION["usertable"]["contestnumber"], $param)) {
+        MSGError('Error deleting problem');
+        LogError('Error deleting problem');
     }
-  }
+    ForceLoad("problem.php");
+}
+
+if (isset($_POST['Submit5']) && $_POST['Submit5'] == 'Build') {
+    ForceLoad("buildproblem.php");
+}
+
+if (isset($_POST['Submit5']) && $_POST['Submit5'] == 'Send') {
+    if (isset($_POST['basename']) &&
+       isset($_POST['fullname']) &&
+       isset($_POST['timelimit']) &&
+       $_POST["confirmation"] == "confirm") {
+        if ($_FILES["probleminput"]["name"] != "") {
+            $type = myhtmlspecialchars($_FILES["probleminput"]["type"]);
+            $size = myhtmlspecialchars($_FILES["probleminput"]["size"]);
+            $name = myhtmlspecialchars($_FILES["probleminput"]["name"]);
+            $temp = myhtmlspecialchars($_FILES["probleminput"]["tmp_name"]);
+            if (!is_uploaded_file($temp)) {
+                ob_end_flush();
+                IntrusionNotify("file upload problem.");
+                ForceLoad("../index.php");
+            }
+        } else {
+            $name = "";
+        }
+        if ($_FILES["problemsol"]["name"] != "") {
+            $type1 = myhtmlspecialchars($_FILES["problemsol"]["type"]);
+            $size1 = myhtmlspecialchars($_FILES["problemsol"]["size"]);
+            $name1 = myhtmlspecialchars($_FILES["problemsol"]["name"]);
+            $temp1 = myhtmlspecialchars($_FILES["problemsol"]["tmp_name"]);
+            if (!is_uploaded_file($temp1)) {
+                ob_end_flush();
+                IntrusionNotify("file upload problem.");
+                ForceLoad("../index.php");
+            }
+        } else {
+            $name1 = "";
+        }
+        if (isset($_FILES["problemdesc"]) && $_FILES["problemdesc"]["name"] != "") {
+            $type2 = myhtmlspecialchars($_FILES["problemdesc"]["type"]);
+            $size2 = myhtmlspecialchars($_FILES["problemdesc"]["size"]);
+            $name2 = myhtmlspecialchars($_FILES["problemdesc"]["name"]);
+            $temp2 = myhtmlspecialchars($_FILES["problemdesc"]["tmp_name"]);
+            if (!is_uploaded_file($temp2)) {
+                ob_end_flush();
+                IntrusionNotify("file upload problem.");
+                ForceLoad("../index.php");
+            }
+        } else {
+            $name2 = "";
+        }
+
+        $ds = DIRECTORY_SEPARATOR;
+        if ($ds == "") {
+            $ds = "/";
+        }
+        $tmpdir = getenv("TMP");
+        if ($tmpdir == "") {
+            $tmpdir = getenv("TMPDIR");
+        }
+        if ($tmpdir[0] != $ds) {
+            $tmdir = $ds . "tmp";
+        }
+        if ($tmpdir == "") {
+            $tmpdir = $ds . "tmp";
+        }
+        $locr = $_SESSION["locr"];
+        $tfile = tempnam($tmpdir, "problem");
+        if (@mkdir($tfile . "_d", 0700)) {
+            $dir = $tfile . "_d";
+            @mkdir($dir . $ds . 'limits');
+            @mkdir($dir . $ds . 'compare');
+            @mkdir($dir . $ds . 'compile');
+            @mkdir($dir . $ds . 'run');
+            @mkdir($dir . $ds . 'input');
+            @mkdir($dir . $ds . 'output');
+            @mkdir($dir . $ds . 'tests');
+            @mkdir($dir . $ds . 'description');
+            $filea = array('compare' . $ds . 'c','compare' . $ds . 'cc','compare' . $ds . 'java','compare' . $ds . 'py2','compare' . $ds . 'py3',
+                           'compile' . $ds . 'c','compile' . $ds . 'cc','compile' . $ds . 'java','compile' . $ds . 'py2','compile' . $ds . 'py3',
+                           'run' . $ds . 'c','run' . $ds . 'cc','run' . $ds . 'java','run' . $ds . 'py2','run' . $ds . 'py3');
+            foreach ($filea as $file) {
+                $rfile = $locr . $ds . '..' . $ds . 'doc' . $ds . 'problemexamples' . $ds . 'problemtemplate' . $ds . $file;
+                if (is_readable($rfile)) {
+                    @copy($rfile, $dir . $ds . $file);
+                } else {
+                    @unlink($tfile);
+                    cleardir($dir);
+                    ob_end_flush();
+                    MSGError('Could not read problem template file ' . $rfile);
+                    ForceLoad('problem.php');
+                }
+            }
+            $tl = explode(',', $_POST['timelimit']);
+            if (!isset($tl[1]) || !is_numeric(trim($tl[1]))) {
+                $tl[1] = '1';
+            }
+            $str = "echo " . trim($tl[0]) . "\necho " . trim($tl[1]) . "\necho 512\necho " . floor(10 + $size1 / 512) . "\nexit 0\n";
+            file_put_contents($dir . $ds . 'limits' . $ds . 'c', $str);
+            file_put_contents($dir . $ds . 'limits' . $ds . 'cc', $str);
+            file_put_contents($dir . $ds . 'limits' . $ds . 'java', $str);
+            file_put_contents($dir . $ds . 'limits' . $ds . 'py2', $str);
+            file_put_contents($dir . $ds . 'limits' . $ds . 'py3', $str);
+            $str = "basename=" . trim($_POST['basename']) . "\nfullname=" . trim($_POST['fullname']);
+            if ($name2) {
+                @copy($temp2, $dir . $ds . 'description' . $ds . $name2);
+                @unlink($temp2);
+                $str .= "\ndescfile=" . $name2;
+            }
+            $str .= "\n";
+            file_put_contents($dir . $ds . 'description' . $ds . 'problem.info', $str);
+            if ($name && $name1) {
+                @copy($temp, $dir . $ds . 'input' . $ds . 'file1');
+                @unlink($temp);
+                @copy($temp1, $dir . $ds . 'output' . $ds . 'file1');
+                @unlink($temp1);
+            } else {
+                @unlink($tfile);
+                cleardir($dir);
+                ob_end_flush();
+                MSGError('Could not read problem input/output files');
+                ForceLoad('problem.php');
+            }
+            $ret = create_zip($dir, glob($dir . $ds . '*'), $dir . '.zip');
+            cleardir($dir);
+            if ($ret <= 0) {
+                @unlink($tfile);
+                @unlink($dir . '.zip');
+                ob_end_flush();
+                MSGError('Could not write to zip file');
+                ForceLoad('problem.php');
+            }
+            $str = file_get_contents($dir . '.zip');
+            @unlink($dir . '.zip');
+            @unlink($tfile);
+            header("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
+            header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+            header("Cache-Control: no-cache, must-revalidate");
+            header("Pragma: no-cache");
+            header("Content-transfer-encoding: binary\n");
+            header("Content-type: application/force-download");
+            header("Content-Disposition: attachment; filename=" . basename($dir . '.zip'));
+            ob_end_flush();
+            echo $str;
+            exit;
+        } else {
+            @unlink($tfile);
+            ob_end_flush();
+            MSGError('Could not write to temporary directory');
+        }
+    }
+    ForceLoad('problem.php');
+}
+
+if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) && is_numeric($_POST["problemnumber"]) &&
+    isset($_POST["problemname"])) {
+    if (strpos(trim($_POST["problemname"]), ' ') !== false) {
+        $_POST["confirmation"] = '';
+        MSGError('Problem short name cannot have spaces');
+    } else {
+        if ($_POST["confirmation"] == "confirm") {
+            if ($_FILES["probleminput"]["name"] != "") {
+                $type = myhtmlspecialchars($_FILES["probleminput"]["type"]);
+                $size = myhtmlspecialchars($_FILES["probleminput"]["size"]);
+                $name = myhtmlspecialchars($_FILES["probleminput"]["name"]);
+                $temp = myhtmlspecialchars($_FILES["probleminput"]["tmp_name"]);
+                if (!is_uploaded_file($temp)) {
+                    IntrusionNotify("file upload problem.");
+                    ForceLoad("../index.php");
+                }
+            } else {
+                $name = "";
+            }
+
+            $problem_number = strtoupper(trim($_POST["problemnumber"]));
+            if (!is_numeric($problem_number)) {
+                MSGError('Problem number must be numeric');
+                ForceLoad('problem.php');
+            }
+            $problem_number = (int)$problem_number;
+
+            $problem_name = trim($_POST["problemname"]);
+            if ($problem_name === "") {
+                // Map problem number to letters: 1->A, 2->B, etc.
+                $problem_name = chr(64 + $problem_number); // 64 = ASCII('A') - 1
+            }
+
+            $colorname = trim($_POST["colorname"]);
+            $color = trim($_POST["color"]);
+
+            // Se estiver vazio, pega a cor padrão do JSON
+            if ($colorname === "" || $color === "") {
+                if (isset($default_colors[$problem_number])) {
+                    if ($colorname === "") {
+                        $colorname = $default_colors[$problem_number]["colorname"];
+                    }
+                    if ($color === "") {
+                        $color = $default_colors[$problem_number]["color"];
+                    }
+                } else {
+                    // Se não estiver no JSON, use algo padrão
+                    if ($colorname === "") {
+                        $colorname = " Color";
+                    }
+                    if ($color === "") {
+                        $color = "CCCCCC"; // Cinza claro, por exemplo
+                    }
+                }
+            }
+
+            $param = array();
+            $param['number'] = $problem_number;
+            $param['name'] = $problem_name;
+            $param['inputfilename'] = $name;
+            $param['inputfilepath'] = $temp;
+            $param['fake'] = 'f';
+            $param['colorname'] = $colorname;
+            $param['color'] = $color;
+
+            $autojudge_value = 0;
+            if (isset($_POST["autojudge_new_sel"]) && in_array($_POST['autojudge_new_sel'], array('all', 'custom', 'none'))) {
+                $all_answers = DBGetAnswers($_SESSION["usertable"]["contestnumber"]);
+                for ($g = 0; $g < count($all_answers); $g++) {
+                    if ($all_answers[$g]['fake'] == 't') {
+                        continue;
+                    }
+                    $campo = 'autojudge_chc_new_'.$all_answers[$g]['number'];
+
+                    if ($_POST['autojudge_new_sel'] == 'all') {
+                        $autojudge_value |= pow(2, $g);
+                    } elseif ($_POST['autojudge_new_sel'] == 'custom' && isset($_POST[$campo]) && $_POST[$campo] == "1") {
+                        $autojudge_value |= pow(2, $g);
+                    }
+                }
+            }
+            $param['autojudge'] = $autojudge_value;
+            DBNewProblem($_SESSION["usertable"]["contestnumber"], $param);
+        }
+    }
+    ForceLoad("problem.php");
+}
+
+$prob = DBGetFullProblemData($_SESSION["usertable"]["contestnumber"], true);
+for ($i = 0; $i < count($prob); $i++) {
+    if ($prob[$i]["fake"] != 't') {
+        if (isset($_POST["SubmitProblem" . $prob[$i]['number']]) && $_POST["SubmitProblem" . $prob[$i]['number']] == 'Update' &&
+        isset($_POST["colorname" . $prob[$i]['number']]) && strlen($_POST["colorname" . $prob[$i]['number']]) <= 100 &&
+        isset($_POST["color" . $prob[$i]['number']]) && strlen($_POST["color" . $prob[$i]['number']]) <= 6 &&
+        isset($_POST["problemname" . $prob[$i]['number']]) && $_POST["problemname" . $prob[$i]['number']] != "" && strlen($_POST["problemname" . $prob[$i]['number']]) <= 20) {
+            if (strpos(trim($_POST["problemname" . $prob[$i]['number']]), ' ') !== false) {
+                MSGError('Problem short name cannot have spaces');
+            } else {
+                $problem_number = strtoupper($prob[$i]['number']);
+
+                // Lê os campos do formulário
+                $colorname = trim($_POST["colorname" . $prob[$i]['number']]);
+                $color = trim($_POST["color" . $prob[$i]['number']]);
+
+                // Se estiver vazio, tentar preencher do JSON
+                if ($colorname === "" || $color === "") {
+                    if (isset($default_colors[$problem_number])) {
+                        if ($colorname === "") {
+                            $colorname = $default_colors[$problem_number]["colorname"];
+                        }
+                        if ($color === "") {
+                            $color = $default_colors[$problem_number]["color"];
+                        }
+                    } else {
+                        // Se não estiver no JSON, use algo padrão
+                        if ($colorname === "") {
+                            $colorname = "Default Color";
+                        }
+                        if ($color === "") {
+                            $color = "CCCCCC";
+                        }
+                    }
+                }
+                $param = array();
+                $param['number'] = $prob[$i]['number'];
+                $param['name'] = trim($_POST["problemname" . $prob[$i]['number']]);
+                $param['fake'] = 'f';
+                $param['colorname'] = $colorname;
+                $params['color'] = $color;
+                DBNewProblem($_SESSION["usertable"]["contestnumber"], $param);
+            }
+            ForceLoad("problem.php");
+        }
+    }
 }
 
 // Update AutoJudge Setting
-for ($i=0; $i<count($prob); $i++) {
-	if($prob[$i]["fake"]=='t') continue;
-	
-	$sel_name = "autojudge_" . $prob[$i]['number']. "_sel";
-	if (isset($_POST["SubmitProblemAJ" . $prob[$i]['number']]) && $_POST["SubmitProblemAJ" . $prob[$i]['number']] == 'Update' && isset ($_POST[$sel_name]) && in_array ($_POST[$sel_name], array ('all', 'custom', 'none'))) {
-		$all_answers = DBGetAnswers($_SESSION["usertable"]["contestnumber"]);
-		$value = 0;
-		for ($g = 0; $g < count ($all_answers); $g++) {
-			if ($all_answers[$g]['fake'] == 't') continue;
-			$campo = 'autojudge_chc_'.$prob[$i]['number'].'_'.$all_answers[$g]['number'];
-			
-			if ($_POST[$sel_name] == 'all') {
-				$value |= pow (2, $g);
-			} else if ($_POST[$sel_name] == 'custom' && isset ($_POST[$campo]) && $_POST[$campo] == "1") {
-				$value |= pow (2, $g);
-			}
-		}
-		$param = array();
-		$param['number'] = $prob[$i]['number'];
-		$param['name'] = trim($prob[$i]['name']);
-		$param['fake'] = 'f';
-		$param['colorname'] = trim($prob[$i]['colorname']);
-		$param['color'] = trim($prob[$i]['color']);
-		$param['autojudge'] = ((integer) $value);
-		DBNewProblem ($_SESSION["usertable"]["contestnumber"], $param);
-		ForceLoad("problem.php");
-	}
+for ($i = 0; $i < count($prob); $i++) {
+    if ($prob[$i]["fake"] == 't') {
+        continue;
+    }
+
+    $sel_name = "autojudge_" . $prob[$i]['number']. "_sel";
+    if (isset($_POST["SubmitProblemAJ" . $prob[$i]['number']]) && $_POST["SubmitProblemAJ" . $prob[$i]['number']] == 'Update' && isset($_POST[$sel_name]) && in_array($_POST[$sel_name], array('all', 'custom', 'none'))) {
+        $all_answers = DBGetAnswers($_SESSION["usertable"]["contestnumber"]);
+        $value = 0;
+        for ($g = 0; $g < count($all_answers); $g++) {
+            if ($all_answers[$g]['fake'] == 't') {
+                continue;
+            }
+            $campo = 'autojudge_chc_'.$prob[$i]['number'].'_'.$all_answers[$g]['number'];
+
+            if ($_POST[$sel_name] == 'all') {
+                $value |= pow(2, $g);
+            } elseif ($_POST[$sel_name] == 'custom' && isset($_POST[$campo]) && $_POST[$campo] == "1") {
+                $value |= pow(2, $g);
+            }
+        }
+        $param = array();
+        $param['number'] = $prob[$i]['number'];
+        $param['name'] = trim($prob[$i]['name']);
+        $param['fake'] = 'f';
+        $param['colorname'] = trim($prob[$i]['colorname']);
+        $param['color'] = trim($prob[$i]['color']);
+        $param['autojudge'] = ((int) $value);
+        DBNewProblem($_SESSION["usertable"]["contestnumber"], $param);
+        ForceLoad("problem.php");
+    }
 }
 ?>
 <br>
@@ -305,136 +405,144 @@ for ($i=0; $i<count($prob); $i++) {
  </tr>
 <?php
 $all_answers = DBGetAnswers($_SESSION["usertable"]["contestnumber"]);
-for ($i=0; $i<count($prob); $i++) {
-  echo " <tr>\n";
-  if($prob[$i]["fake"]!='t') {
-	  if(strpos($prob[$i]["fullname"],"(DEL)") !== false) {
-		  echo "  <td nowrap><a href=\"javascript: conf3('problem.php?delete=" . $prob[$i]["number"] . "&input=" . myrawurlencode($prob[$i]["inputfilename"]) . 
-			  "')\">" . $prob[$i]["number"];
-		  echo "(deleted)";
-	  } else {
-		  echo "  <td nowrap><a href=\"javascript: conf2('problem.php?delete=" . $prob[$i]["number"] . "&input=" . myrawurlencode($prob[$i]["inputfilename"]) . 
-			  "')\">" . $prob[$i]["number"];
-	  }
-	  echo "</a></td>\n";
-	  echo "<input type=hidden name=\"problemname" . $prob[$i]['number'] . "\" value=\"" . $prob[$i]["name"] . "\" />";
-	  echo "  <td nowrap>" . $prob[$i]["name"] . "</td>\n";
-	  //echo "  <td nowrap>";
-	  //echo "<input type=\"text\" name=\"problemname" . $prob[$i]['number'] . "\" value=\"" . $prob[$i]["name"] . "\" size=\"4\" maxlength=\"20\" />";
-	  //echo "</td>\n";
-  } else {
-    echo "  <td nowrap>" . $prob[$i]["number"] . " (fake)</td>\n";
-    echo "  <td nowrap>" . $prob[$i]["name"] . "</td>\n";
-  }
-  echo "  <td nowrap>" . $prob[$i]["fullname"] . "&nbsp;</td>\n";
-  echo "  <td nowrap>" . $prob[$i]["basefilename"] . "&nbsp;</td>\n";
-  if (isset($prob[$i]["descoid"]) && $prob[$i]["descoid"] != null && isset($prob[$i]["descfilename"])) {
-	  echo "  <td nowrap><a href=\"../filedownload.php?" . filedownload($prob[$i]["descoid"], $prob[$i]["descfilename"]) . "\">" . 
-		  basename($prob[$i]["descfilename"]) . "</td>\n";
-  }
-  else
-    echo "  <td>&nbsp;</td>\n";
-  if ($prob[$i]["inputoid"] != null) {
-    $tx = $prob[$i]["inputhash"];
-    echo "  <td nowrap><a href=\"../filedownload.php?" . filedownload($prob[$i]["inputoid"] ,$prob[$i]["inputfilename"]) ."\">" .
-		$prob[$i]["inputfilename"] . "</a> " . 
-		"<img title=\"hash: $tx\" alt=\"$tx\" width=\"25\" src=\"../images/bigballoontransp-hash.png\" />" . 
-        "</td>\n";
-  }
-  else
-    echo "  <td nowrap>&nbsp;</td>\n";
-/*
-  if ($prob[$i]["soloid"] != null) {
-    $tx = $prob[$i]["solhash"];
-    echo "  <td nowrap><a href=\"../filedownload.php?" . filedownload($prob[$i]["soloid"],$prob[$i]["solfilename"]) ."\">" . 
-	$prob[$i]["solfilename"] . "</a> ".
-	"<img title=\"hash: $tx\" alt=\"$tx\" width=\"25\" src=\"../images/bigballoontransp-hash.png\" />" . 
-	"</td>\n";
-  }
-  else
-    echo "  <td nowrap>&nbsp;</td>\n";
-  if ($prob[$i]["timelimit"]!="")
-    echo "  <td nowrap>" . $prob[$i]["timelimit"] . "</td>\n";
-  else
-    echo "  <td nowrap>&nbsp;</td>\n";
-*/
-  echo "  <td nowrap>";
-  if($prob[$i]["fake"]!='t') {
-    if ($prob[$i]["color"]!="") {
-      echo "<img title=\"".$prob[$i]["color"]."\" alt=\"".$prob[$i]["colorname"]."\" width=\"25\" src=\"" . 
-	balloonurl($prob[$i]["color"]) . "\" />\n";
+for ($i = 0; $i < count($prob); $i++) {
+    echo " <tr>\n";
+    if ($prob[$i]["fake"] != 't') {
+        if (strpos($prob[$i]["fullname"], "(DEL)") !== false) {
+            echo "  <td nowrap><a href=\"javascript: conf3('problem.php?delete=" . $prob[$i]["number"] . "&input=" . myrawurlencode($prob[$i]["inputfilename"]) .
+                "')\">" . $prob[$i]["number"];
+            echo "(deleted)";
+        } else {
+            echo "  <td nowrap><a href=\"javascript: conf2('problem.php?delete=" . $prob[$i]["number"] . "&input=" . myrawurlencode($prob[$i]["inputfilename"]) .
+                "')\">" . $prob[$i]["number"];
+        }
+        echo "</a></td>\n";
+        echo "<input type=hidden name=\"problemname" . $prob[$i]['number'] . "\" value=\"" . $prob[$i]["name"] . "\" />";
+        echo "  <td nowrap>" . $prob[$i]["name"] . "</td>\n";
+        //echo "  <td nowrap>";
+        //echo "<input type=\"text\" name=\"problemname" . $prob[$i]['number'] . "\" value=\"" . $prob[$i]["name"] . "\" size=\"4\" maxlength=\"20\" />";
+        //echo "</td>\n";
+    } else {
+        echo "  <td nowrap>" . $prob[$i]["number"] . " (fake)</td>\n";
+        echo "  <td nowrap>" . $prob[$i]["name"] . "</td>\n";
     }
-    echo "<input type=\"text\" name=\"colorname" . $prob[$i]['number'] . "\" value=\"" . $prob[$i]["colorname"] . "\" size=\"10\" maxlength=\"100\" />";
-    echo "<input type=\"text\" name=\"color" . $prob[$i]['number'] . "\" value=\"" . $prob[$i]["color"]. "\" size=\"6\" maxlength=\"6\" />";
-    echo "<input type=\"submit\" name=\"SubmitProblem" . $prob[$i]["number"] . "\" value=\"Update\">";
-  } else echo "&nbsp;";
-  echo "</td>\n";
-  
-  // Print the autojudge setting with a INPUT SELECT BOX + small boxes
-  echo "  <td nowrap>";
-  if($prob[$i]["fake"]!='t') {
-	$autojudge_int_val = ((integer) $prob[$i]['autojudge']);
-	$sel_name = "autojudge_" . $prob[$i]['number']. "_sel";
-	printf ('<select id="%s" name="%s">', $sel_name, $sel_name);
-	
-	$all_mask = 0;
-	for ($g = 0; $g < count($all_answers); $g++) {
-		if ($all_answers[$g]['fake'] == 't') continue;
-		$all_mask |= pow (2, $g);
-	}
-	if ($autojudge_int_val == $all_mask) {
-		$dis = true;
-		$dis_value = true;
-		$sel_value = 'all';
-	} else if ($autojudge_int_val == 0) {
-		$dis = true;
-		$dis_value = false;
-		$sel_value = 'none';
-	} else {
-		$dis = false;
-		$sel_value = 'custom';
-	}
-	
-	$opts = array ('Everything' => 'all', 'Custom' => 'custom', 'None' => 'none');
-	foreach ($opts as $display_name => $opt) {
-		if ($opt == $sel_value) {
-			printf ('<option value="%s" selected="selected">%s</option>', $opt, $display_name);
-		} else {
-			printf ('<option value="%s">%s</option>', $opt, $display_name);
-		}
-	}
-	
-	echo "</select><br />\n";
-	
-	echo "<table><tr>\n";
-	
-	for ($g = 0; $g < count($all_answers); $g++) {
-		if ($all_answers[$g]['fake'] == 't') continue;
-		echo "<td>\n";
-		printf ('<input type="checkbox" id=autojudge_chc_%s_%s name="autojudge_chc_%s_%s" value="1" ', $i, $g, $i, $g);
-		if ($sel_value == 'all') {
-			printf ('disabled="disabled" checked="checked" />');
-		} else if ($sel_value == 'none') {
-			printf ('disabled="disabled" />');
-		} else {
-			$mask = pow (2, $all_answers[$g]['number']);
-			if (($autojudge_int_val & $mask) == $mask) {
-				printf ('checked="checked" />');
-			} else {
-				printf (' />');
-			}
-		}
-		echo "\n</td>\n";
-	}
-	echo "</tr><tr>\n";
-	for ($g = 0; $g < count($all_answers); $g++) {
-		if ($all_answers[$g]['fake'] == 't') continue;
-		printf ('<td><label for="autojudge_chc_%s_%s">', $i, $g);
-		printf ('<abbr title="%s">%s</abbr>', $all_answers[$g]['desc'], $all_answers[$g]['short']);
-		echo "</label></td>\n";
-	}
-	echo "</tr></table>\n";
-	?>
+    echo "  <td nowrap>" . $prob[$i]["fullname"] . "&nbsp;</td>\n";
+    echo "  <td nowrap>" . $prob[$i]["basefilename"] . "&nbsp;</td>\n";
+    if (isset($prob[$i]["descoid"]) && $prob[$i]["descoid"] != null && isset($prob[$i]["descfilename"])) {
+        echo "  <td nowrap><a href=\"../filedownload.php?" . filedownload($prob[$i]["descoid"], $prob[$i]["descfilename"]) . "\">" .
+            basename($prob[$i]["descfilename"]) . "</td>\n";
+    } else {
+        echo "  <td>&nbsp;</td>\n";
+    }
+    if ($prob[$i]["inputoid"] != null) {
+        $tx = $prob[$i]["inputhash"];
+        echo "  <td nowrap><a href=\"../filedownload.php?" . filedownload($prob[$i]["inputoid"], $prob[$i]["inputfilename"]) ."\">" .
+            $prob[$i]["inputfilename"] . "</a> " .
+            "<img title=\"hash: $tx\" alt=\"$tx\" width=\"25\" src=\"../images/bigballoontransp-hash.png\" />" .
+            "</td>\n";
+    } else {
+        echo "  <td nowrap>&nbsp;</td>\n";
+    }
+    /*
+      if ($prob[$i]["soloid"] != null) {
+        $tx = $prob[$i]["solhash"];
+        echo "  <td nowrap><a href=\"../filedownload.php?" . filedownload($prob[$i]["soloid"],$prob[$i]["solfilename"]) ."\">" .
+        $prob[$i]["solfilename"] . "</a> ".
+        "<img title=\"hash: $tx\" alt=\"$tx\" width=\"25\" src=\"../images/bigballoontransp-hash.png\" />" .
+        "</td>\n";
+      }
+      else
+        echo "  <td nowrap>&nbsp;</td>\n";
+      if ($prob[$i]["timelimit"]!="")
+        echo "  <td nowrap>" . $prob[$i]["timelimit"] . "</td>\n";
+      else
+        echo "  <td nowrap>&nbsp;</td>\n";
+    */
+    echo "  <td nowrap>";
+    if ($prob[$i]["fake"] != 't') {
+        if ($prob[$i]["color"] != "") {
+            echo "<img title=\"".$prob[$i]["color"]."\" alt=\"".$prob[$i]["colorname"]."\" width=\"25\" src=\"" .
+    balloonurl($prob[$i]["color"]) . "\" />\n";
+        }
+        echo "<input type=\"text\" name=\"colorname" . $prob[$i]['number'] . "\" value=\"" . $prob[$i]["colorname"] . "\" size=\"10\" maxlength=\"100\" />";
+        echo "<input type=\"text\" name=\"color" . $prob[$i]['number'] . "\" value=\"" . $prob[$i]["color"]. "\" size=\"6\" maxlength=\"6\" />";
+        echo "<input type=\"submit\" name=\"SubmitProblem" . $prob[$i]["number"] . "\" value=\"Update\">";
+    } else {
+        echo "&nbsp;";
+    }
+    echo "</td>\n";
+
+    // Print the autojudge setting with a INPUT SELECT BOX + small boxes
+    echo "  <td nowrap>";
+    if ($prob[$i]["fake"] != 't') {
+        $autojudge_int_val = ((int) $prob[$i]['autojudge']);
+        $sel_name = "autojudge_" . $prob[$i]['number']. "_sel";
+        printf('<select id="%s" name="%s">', $sel_name, $sel_name);
+
+        $all_mask = 0;
+        for ($g = 0; $g < count($all_answers); $g++) {
+            if ($all_answers[$g]['fake'] == 't') {
+                continue;
+            }
+            $all_mask |= pow(2, $g);
+        }
+        if ($autojudge_int_val == $all_mask) {
+            $dis = true;
+            $dis_value = true;
+            $sel_value = 'all';
+        } elseif ($autojudge_int_val == 0) {
+            $dis = true;
+            $dis_value = false;
+            $sel_value = 'none';
+        } else {
+            $dis = false;
+            $sel_value = 'custom';
+        }
+
+        $opts = array('Everything' => 'all', 'Custom' => 'custom', 'None' => 'none');
+        foreach ($opts as $display_name => $opt) {
+            if ($opt == $sel_value) {
+                printf('<option value="%s" selected="selected">%s</option>', $opt, $display_name);
+            } else {
+                printf('<option value="%s">%s</option>', $opt, $display_name);
+            }
+        }
+
+        echo "</select><br />\n";
+
+        echo "<table><tr>\n";
+
+        for ($g = 0; $g < count($all_answers); $g++) {
+            if ($all_answers[$g]['fake'] == 't') {
+                continue;
+            }
+            echo "<td>\n";
+            printf('<input type="checkbox" id=autojudge_chc_%s_%s name="autojudge_chc_%s_%s" value="1" ', $i, $g, $i, $g);
+            if ($sel_value == 'all') {
+                printf('disabled="disabled" checked="checked" />');
+            } elseif ($sel_value == 'none') {
+                printf('disabled="disabled" />');
+            } else {
+                $mask = pow(2, $all_answers[$g]['number']);
+                if (($autojudge_int_val & $mask) == $mask) {
+                    printf('checked="checked" />');
+                } else {
+                    printf(' />');
+                }
+            }
+            echo "\n</td>\n";
+        }
+        echo "</tr><tr>\n";
+        for ($g = 0; $g < count($all_answers); $g++) {
+            if ($all_answers[$g]['fake'] == 't') {
+                continue;
+            }
+            printf('<td><label for="autojudge_chc_%s_%s">', $i, $g);
+            printf('<abbr title="%s">%s</abbr>', $all_answers[$g]['desc'], $all_answers[$g]['short']);
+            echo "</label></td>\n";
+        }
+        echo "</tr></table>\n";
+        ?>
 	<script type="text/javascript">
 		function <?php echo "f_change_".$sel_name; ?> () {
 			var sel = document.getElementById("<?php echo $sel_name; ?>");
@@ -451,6 +559,7 @@ for ($i=0; $i<count($prob); $i++) {
 			
 			for (g = 1; g < max_ans; g++) {
 				var c = document.getElementById ("<?php echo 'autojudge_chc_'.$prob[$i]['number'].'_';?>" + g);
+                if (!c) continue;
 				if (dis == true) {
 					c.checked = sel;
 					c.disabled = true;
@@ -464,14 +573,18 @@ for ($i=0; $i<count($prob); $i++) {
 		<?php echo "f_change_".$sel_name; ?> ();
 	</script>
 <?php
-    echo "<input type=\"submit\" name=\"SubmitProblemAJ" . $prob[$i]["number"] . "\" value=\"Update\">";
-  } else echo "&nbsp;";
-  echo "</td>\n";
-  
-  echo " </tr>\n";
+        echo "<input type=\"submit\" name=\"SubmitProblemAJ" . $prob[$i]["number"] . "\" value=\"Update\">";
+    } else {
+        echo "&nbsp;";
+    }
+    echo "</td>\n";
+
+    echo " </tr>\n";
 }
 echo "</table></form>";
-if (count($prob) == 0) echo "<br><center><b><font color=\"#ff0000\">NO PROBLEMS DEFINED</font></b></center>";
+if (count($prob) == 0) {
+    echo "<br><center><b><font color=\"#ff0000\">NO PROBLEMS DEFINED</font></b></center>";
+}
 
 ?>
 
@@ -485,9 +598,6 @@ To replace the data of a problem, proceed as if it did not exist (data will be r
   <input type=hidden name="confirmation" value="noconfirm" />
   <script language="javascript">
     function conf() {
-			if(document.form1.problemname.value=="") {
-				alert('Sorry, mandatory fields are empty');
-			} else {
 /*
 				var s1 = String(document.form1.problemdesc.value);
 				var l = s1.length;
@@ -514,7 +624,6 @@ To replace the data of a problem, proceed as if it did not exist (data will be r
 				} else {
 					alert('File package must be given');
 				}
-			}
     }
   </script>
   <center>
@@ -528,7 +637,7 @@ To replace the data of a problem, proceed as if it did not exist (data will be r
       <tr>
 	 <td width="35%" align=right>Short Name (usually a letter, no spaces):</td>
         <td width="65%">
-          <input type="text" name="problemname" value="" size="20" maxlength="20" />
+          <input type="text" name="problemname" value="" size="20" maxlength="20" placeholder="Leave blank for default"/>
         </td>
       </tr>
 <!--
@@ -575,13 +684,13 @@ To replace the data of a problem, proceed as if it did not exist (data will be r
       <tr>
         <td width="35%" align=right>Color name:</td>
         <td width="65%">
-          <input type="text" name="colorname" value="" size="40" maxlength="100" />
+          <input type="text" name="colorname" value="" size="40" maxlength="100" placeholder="Leave blank for default"/>
         </td>
       </tr>
       <tr>
         <td width="35%" align=right>Color (RGB HTML format):</td>
         <td width="65%">
-          <input type="text" name="color" value="" size="6" maxlength="6" />
+          <input type="text" name="color" value="" size="6" maxlength="6" placeholder="Leave blank for default"/>
         </td>
       </tr>
       <tr>
@@ -594,21 +703,25 @@ To replace the data of a problem, proceed as if it did not exist (data will be r
           </select>
           <table><tr>
 <?php
-	for ($g = 0; $g < count($all_answers); $g++) {
-		if ($all_answers[$g]['fake'] == 't') continue;
-		echo "<td>\n";
-		printf ('<input type="checkbox" id=autojudge_chc_new_%s name="autojudge_chc_new_%s" value="1" disabled="disabled" checked="checked" />', $g, $g);
-		echo "\n</td>\n";
-	}
-	echo "</tr><tr>\n";
-	for ($g = 0; $g < count($all_answers); $g++) {
-		if ($all_answers[$g]['fake'] == 't') continue;
-		printf ('<td><label for="autojudge_chc_new_%s">', $g);
-		printf ('<abbr title="%s">%s</abbr>', $all_answers[$g]['desc'], $all_answers[$g]['short']);
-		echo "</label></td>\n";
-	}
-	echo "</tr></table>\n";
-	?>
+    for ($g = 0; $g < count($all_answers); $g++) {
+        if ($all_answers[$g]['fake'] == 't') {
+            continue;
+        }
+        echo "<td>\n";
+        printf('<input type="checkbox" id=autojudge_chc_new_%s name="autojudge_chc_new_%s" value="1" disabled="disabled" checked="checked" />', $g, $g);
+        echo "\n</td>\n";
+    }
+echo "</tr><tr>\n";
+for ($g = 0; $g < count($all_answers); $g++) {
+    if ($all_answers[$g]['fake'] == 't') {
+        continue;
+    }
+    printf('<td><label for="autojudge_chc_new_%s">', $g);
+    printf('<abbr title="%s">%s</abbr>', $all_answers[$g]['desc'], $all_answers[$g]['short']);
+    echo "</label></td>\n";
+}
+echo "</tr></table>\n";
+?>
 	<script type="text/javascript">
 		function f_change_new () {
 			var sel = document.getElementById("autojudge_new_sel");

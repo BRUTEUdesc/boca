@@ -61,7 +61,7 @@ FORM.fname { font-size:12pt; margin: 0px}
 INPUT.fname { font-family:"Courier New", Courier, mono;font-size:12pt; border:0; background-color:<?php echo $corfundo2?> }
 FORM.dir { font-size:12pt; margin: 0px} 
 INPUT.dir { font-family:"Courier New", Courier, mono;font-size:12pt; border:0; background-color:<?php echo $corfundo?> }
-<?php if( strstr(getenv("HTTP_USER_AGENT"), "MSIE")) { ?>
+<?php if (strstr(getenv("HTTP_USER_AGENT"), "MSIE")) { ?>
 input.checkbox { border:none }
 <?php } else { ?>
 input.checkbox { }

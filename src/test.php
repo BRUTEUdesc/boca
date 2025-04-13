@@ -1,4 +1,5 @@
 <?php
+
 $simple = file_get_contents('../doc/test.dat');
 $p = xml_parser_create();
 xml_parser_set_option($p, XML_OPTION_CASE_FOLDING, 1);
@@ -13,4 +14,3 @@ print_r($vals);
 $aa = "aaa";
 $$aa = "a";
 echo "==>" . $aa . " " . $aaa . "\n";
-?>

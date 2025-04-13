@@ -1,4 +1,5 @@
 <?php
+
 ////////////////////////////////////////////////////////////////////////////////
 //BOCA Online Contest Administrator
 //    Copyright (C) 2003-2012 by BOCA Development Team (bocasystem@gmail.com)
@@ -20,102 +21,102 @@ ob_start();
 session_start();
 require_once("globals.php");
 
-if(!ValidSession()) {
-	echo "<html><head><title>View Page</title>";
-        InvalidSession("filewindow.php");
-	echo "<script>window.close();</script></html>";
-	exit;
+if (!ValidSession()) {
+    echo "<html><head><title>View Page</title>";
+    InvalidSession("filewindow.php");
+    echo "<script>window.close();</script></html>";
+    exit;
 }
 
-if(!isset($_GET["oid"]) || !is_numeric($_GET["oid"]) || !isset($_GET["filename"]) ||
-   !isset($_GET["check"]) || $_GET["check"]=="") {
-	echo "<html><head><title>View Page</title>";
-        IntrusionNotify("Bad parameters in filewindow.php");
-	echo "<script>window.close();</script></html>";
-	exit;
+if (!isset($_GET["oid"]) || !is_numeric($_GET["oid"]) || !isset($_GET["filename"]) ||
+   !isset($_GET["check"]) || $_GET["check"] == "") {
+    echo "<html><head><title>View Page</title>";
+    IntrusionNotify("Bad parameters in filewindow.php");
+    echo "<script>window.close();</script></html>";
+    exit;
 }
 
 $cf = globalconf();
-$uglysalt="30a2224c82dcf42e497e2a1f6bd6516b";
+$uglysalt = "30a2224c82dcf42e497e2a1f6bd6516b";
 $fname = decryptData(myrawurldecode($_GET["filename"]), $uglysalt . $cf["key"]);
 $msg = '';
-if(isset($_GET["msg"]))
-	$msg = myrawurldecode($_GET["msg"]);
+if (isset($_GET["msg"])) {
+    $msg = myrawurldecode($_GET["msg"]);
+}
 
 $p = myhash($_GET["oid"] . $fname . $msg . $uglysalt . $cf["key"]);
 
-if($p != $_GET["check"]) {
-	echo "<html><head><title>View Page</title>";
-        IntrusionNotify("Parameters modified in filewindow.php");
-	echo "<script>window.close();</script></html>";
-	exit;
+if ($p != $_GET["check"]) {
+    echo "<html><head><title>View Page</title>";
+    IntrusionNotify("Parameters modified in filewindow.php");
+    echo "<script>window.close();</script></html>";
+    exit;
 }
 
 require_once("db.php");
 
-if ($_GET["oid"]>=0) {
-  $c = DBConnect();
-  DBExec($c, "begin work");
+if ($_GET["oid"] >= 0) {
+    $c = DBConnect();
+    DBExec($c, "begin work");
 
-  if (($lo = DB_lo_open ($c, $_GET["oid"], "r")) === false) {
-	echo "<html><head><title>View Page</title>";
-	DBExec($c, "rollback work");
-	LOGError ("Unable to download file (" . basename($fname) . ")");
-	MSGError ("Unable to download file (" . basename($fname) . ")");
-	echo "<script>window.close();</script></html>";
-	exit;
-  }
+    if (($lo = DB_lo_open($c, $_GET["oid"], "r")) === false) {
+        echo "<html><head><title>View Page</title>";
+        DBExec($c, "rollback work");
+        LOGError("Unable to download file (" . basename($fname) . ")");
+        MSGError("Unable to download file (" . basename($fname) . ")");
+        echo "<script>window.close();</script></html>";
+        exit;
+    }
 
-  header ("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
-  header ("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
-  header ("Cache-Control: no-cache, must-revalidate");
-  header ("Pragma: no-cache");
-  header ("Content-type: text/plain");
+    header("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
+    header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+    header("Cache-Control: no-cache, must-revalidate");
+    header("Pragma: no-cache");
+    header("Content-type: text/plain");
 
-//  echo "<html><body>\n";
-  if($msg != '') {
-//    echo " <a href=\"#\" onClick=\"window.print()\"><h1>".$_GET["msg"]."</h1></a>";
-    echo $msg ."\n";
-    echo $msg ."\n";
-    echo $msg ."\n\n\n";
-  }
-//  echo "<pre>\n";
-  if (DB_lo_read_tobrowser ($_SESSION["usertable"]["contestnumber"],$lo,$c) === false) {
-        header ("Content-type: text/html");
-	echo "<html><head><title>View Page</title>";
-	DBExec($c, "rollback work");
-	LOGError ("Unable to open file (" . basename($fname) . ")");
-	MSGError ("Unable to open file (" . basename($fname) . ")");
-	echo "<script>window.close();</script></html>";
-	exit;
-  }
-  ob_end_flush();
-//  echo "</pre>\n";
-  DB_lo_close($lo);
-  if($msg != '') {
-//    echo " <a href=\"#\" onClick=\"window.print()\"><h1>".$_GET["msg"]."</h1></a>";
-    echo "\n\n\n".$msg ."\n";
-    echo $msg ."\n";
-    echo $msg ."\n";
-  }
+    //  echo "<html><body>\n";
+    if ($msg != '') {
+        //    echo " <a href=\"#\" onClick=\"window.print()\"><h1>".$_GET["msg"]."</h1></a>";
+        echo $msg ."\n";
+        echo $msg ."\n";
+        echo $msg ."\n\n\n";
+    }
+    //  echo "<pre>\n";
+    if (DB_lo_read_tobrowser($_SESSION["usertable"]["contestnumber"], $lo, $c) === false) {
+        header("Content-type: text/html");
+        echo "<html><head><title>View Page</title>";
+        DBExec($c, "rollback work");
+        LOGError("Unable to open file (" . basename($fname) . ")");
+        MSGError("Unable to open file (" . basename($fname) . ")");
+        echo "<script>window.close();</script></html>";
+        exit;
+    }
+    ob_end_flush();
+    //  echo "</pre>\n";
+    DB_lo_close($lo);
+    if ($msg != '') {
+        //    echo " <a href=\"#\" onClick=\"window.print()\"><h1>".$_GET["msg"]."</h1></a>";
+        echo "\n\n\n".$msg ."\n";
+        echo $msg ."\n";
+        echo $msg ."\n";
+    }
 
-  DBExec($c, "commit work");
-  DBClose($c);
+    DBExec($c, "commit work");
+    DBClose($c);
 } else {
-  header ("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
-  header ("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
-  header ("Cache-Control: no-cache, must-revalidate");
-  header ("Pragma: no-cache");
-  if (($str = file_get_contents($fname))===false) {
-	  header ("Content-type: text/html");
-	  echo "<html><head><title>View Page</title>";
-	  MSGError ("Unable to open file (" . basename($fname) . ")");
-	  LOGError ("Unable to open file (" . basename($fname) . ")");
-	  echo "<script>window.close();</script></html>";
-	  exit;
-  }
-  header ("Content-type: text/plain");
-  echo  decryptData($str, $cf["key"]);
-  ob_end_flush();
+    header("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
+    header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+    header("Cache-Control: no-cache, must-revalidate");
+    header("Pragma: no-cache");
+    if (($str = file_get_contents($fname)) === false) {
+        header("Content-type: text/html");
+        echo "<html><head><title>View Page</title>";
+        MSGError("Unable to open file (" . basename($fname) . ")");
+        LOGError("Unable to open file (" . basename($fname) . ")");
+        echo "<script>window.close();</script></html>";
+        exit;
+    }
+    header("Content-type: text/plain");
+    echo  decryptData($str, $cf["key"]);
+    ob_end_flush();
 }
-?>

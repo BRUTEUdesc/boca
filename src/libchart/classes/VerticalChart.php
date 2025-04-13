@@ -1,169 +1,168 @@
 <?php
-	/** Libchart - PHP chart library
-	*	
-	* Copyright (C) 2005-2006 Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
-	* 	
-	* This library is free software; you can redistribute it and/or
-	* modify it under the terms of the GNU Lesser General Public
-	* License as published by the Free Software Foundation; either
-	* version 2.1 of the License, or (at your option) any later version.
-	* 
-	* This library is distributed in the hope that it will be useful,
-	* but WITHOUT ANY WARRANTY; without even the implied warranty of
-	* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-	* Lesser General Public License for more details.
-	* 
-	* You should have received a copy of the GNU Lesser General Public
-	* License along with this library; if not, write to the Free Software
-	* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-	* 
-	*/
-	
-	/**
-	* Vertical bar chart
-	*
-	* @author   Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
-	*/
 
-	class VerticalChart extends BarChart
-	{
-		/**
-		* Creates a new vertical bar chart
-		*
-		* @access	public
-    		* @param	integer		width of the image
-    		* @param	integer		height of the image
-		*/
-		
-		function VerticalChart($width = 600, $height = 250)
-		{
-			parent::BarChart($width, $height);
+/** Libchart - PHP chart library
+*
+* Copyright (C) 2005-2006 Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 2.1 of the License, or (at your option) any later version.
+*
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*
+*/
 
-			$this->setLabelMarginLeft(50);
-			$this->setLabelMarginRight(30);
-			$this->setLabelMarginTop(40);
-			$this->setLabelMarginBottom(50);
-		}
+/**
+* Vertical bar chart
+*
+* @author   Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
+*/
 
-		/**
-		* Print the axis
-		*
-		* @access	private
-		*/
-		
-		function printAxis()
-		{
-			// Check if some points were defined
-			
-			if(!$this->sampleCount)
-				return;
-			
-			$minValue = $this->axis->getLowerBoundary();
-			$maxValue = $this->axis->getUpperBoundary();
-			$stepValue = $this->axis->getTics();
+class VerticalChart extends BarChart
+{
+    /**
+    * Creates a new vertical bar chart
+    *
+    * @access	public
+        * @param	integer		width of the image
+        * @param	integer		height of the image
+    */
 
-			// Vertical axis
+    public function VerticalChart($width = 600, $height = 250)
+    {
+        parent::BarChart($width, $height);
 
-			for($value = $minValue; $value <= $maxValue; $value += $stepValue)
-			{
-				$y = $this->graphBRY - ($value - $minValue) * ($this->graphBRY - $this->graphTLY) / ($this->axis->displayDelta);
+        $this->setLabelMarginLeft(50);
+        $this->setLabelMarginRight(30);
+        $this->setLabelMarginTop(40);
+        $this->setLabelMarginBottom(50);
+    }
 
-				imagerectangle($this->img, $this->graphTLX - 3, $y, $this->graphTLX - 2, $y + 1, $this->axisColor1->getColor($this->img));
-				imagerectangle($this->img, $this->graphTLX - 1, $y, $this->graphTLX, $y + 1, $this->axisColor2->getColor($this->img));
+    /**
+    * Print the axis
+    *
+    * @access	private
+    */
 
-				$this->text->printText($this->img, $this->graphTLX - 5, $y, $this->textColor, $value, $this->text->fontCondensed, $this->text->HORIZONTAL_RIGHT_ALIGN | $this->text->VERTICAL_CENTER_ALIGN);
-			}
+    public function printAxis()
+    {
+        // Check if some points were defined
 
-			// Horizontal Axis
+        if (!$this->sampleCount) {
+            return;
+        }
 
-			$columnWidth = ($this->graphBRX - $this->graphTLX) / $this->sampleCount;
+        $minValue = $this->axis->getLowerBoundary();
+        $maxValue = $this->axis->getUpperBoundary();
+        $stepValue = $this->axis->getTics();
 
-			reset($this->point);
+        // Vertical axis
 
-			for($i = 0; $i <= $this->sampleCount; $i++)
-			{
-				$x = $this->graphTLX + $i * $columnWidth;
+        for ($value = $minValue; $value <= $maxValue; $value += $stepValue) {
+            $y = $this->graphBRY - ($value - $minValue) * ($this->graphBRY - $this->graphTLY) / ($this->axis->displayDelta);
 
-				imagerectangle($this->img, $x - 1, $this->graphBRY + 2, $x, $this->graphBRY + 3, $this->axisColor1->getColor($this->img));
-				imagerectangle($this->img, $x - 1, $this->graphBRY, $x, $this->graphBRY + 1, $this->axisColor2->getColor($this->img));
+            imagerectangle($this->img, $this->graphTLX - 3, $y, $this->graphTLX - 2, $y + 1, $this->axisColor1->getColor($this->img));
+            imagerectangle($this->img, $this->graphTLX - 1, $y, $this->graphTLX, $y + 1, $this->axisColor2->getColor($this->img));
 
-				if($i < $this->sampleCount)
-				{
-					$point = current($this->point);
-					next($this->point);
-	
-					$text = $point->getX();
+            $this->text->printText($this->img, $this->graphTLX - 5, $y, $this->textColor, $value, $this->text->fontCondensed, $this->text->HORIZONTAL_RIGHT_ALIGN | $this->text->VERTICAL_CENTER_ALIGN);
+        }
 
-					$this->text->printDiagonal($this->img, $x + $columnWidth * 1 / 3, $this->graphBRY + 10, $this->textColor, $text);
-				}
-			}
-		}
+        // Horizontal Axis
 
-		/**
-		* Print the bars
-		*
-		* @access	private
-		*/
+        $columnWidth = ($this->graphBRX - $this->graphTLX) / $this->sampleCount;
 
-		function printBar()
-		{
-			// Check if some points were defined
-			
-			if(!$this->sampleCount)
-				return;
-			
-			reset($this->point);
+        reset($this->point);
 
-			$minValue = $this->axis->getLowerBoundary();
-			$maxValue = $this->axis->getUpperBoundary();
-			$stepValue = $this->axis->getTics();
+        for ($i = 0; $i <= $this->sampleCount; $i++) {
+            $x = $this->graphTLX + $i * $columnWidth;
 
-			$columnWidth = ($this->graphBRX - $this->graphTLX) / $this->sampleCount;
+            imagerectangle($this->img, $x - 1, $this->graphBRY + 2, $x, $this->graphBRY + 3, $this->axisColor1->getColor($this->img));
+            imagerectangle($this->img, $x - 1, $this->graphBRY, $x, $this->graphBRY + 1, $this->axisColor2->getColor($this->img));
 
-			for($i = 0; $i < $this->sampleCount; $i++)
-			{
-				$x = $this->graphTLX + $i * ($this->graphBRX - $this->graphTLX) / $this->sampleCount;
+            if ($i < $this->sampleCount) {
+                $point = current($this->point);
+                next($this->point);
 
-				$point = current($this->point);
-				next($this->point);
+                $text = $point->getX();
 
-				$value = $point->getY();
-				
-				$ymin = $this->graphBRY - ($value - $minValue) * ($this->graphBRY - $this->graphTLY) / ($this->axis->displayDelta);
+                $this->text->printDiagonal($this->img, $x + $columnWidth * 1 / 3, $this->graphBRY + 10, $this->textColor, $text);
+            }
+        }
+    }
 
-				$this->text->printText($this->img, $x + $columnWidth / 2, $ymin - 5, $this->textColor, $value, $this->text->fontCondensed, $this->text->HORIZONTAL_CENTER_ALIGN | $this->text->VERTICAL_BOTTOM_ALIGN);
+    /**
+    * Print the bars
+    *
+    * @access	private
+    */
 
-				// Vertical bar
+    public function printBar()
+    {
+        // Check if some points were defined
 
-				$x1 = $x + $columnWidth * 1 / 5;
-				$x2 = $x + $columnWidth * 4 / 5;
+        if (!$this->sampleCount) {
+            return;
+        }
 
-				imagefilledrectangle($this->img, $x1, $ymin, $x2, $this->graphBRY - 1, $this->barColor2->getColor($this->img));
-				imagefilledrectangle($this->img, $x1 + 1, $ymin + 1, $x2 - 4, $this->graphBRY - 1, $this->barColor1->getColor($this->img));
-			}
-		}
-		
-		/**
-		* Render the chart image
-		*
-		* @access	public
-		* @param	string		name of the file to render the image to (optional)
-		*/
-		
-		function render($fileName = null)
-		{
-			$this->computeBound();
-			$this->computeLabelMargin();
-			$this->createImage();
-			$this->printLogo();
-			$this->printTitle();
-			$this->printAxis();
-			$this->printBar();
+        reset($this->point);
 
-			if(isset($fileName))
-				imagepng($this->img, $fileName);
-			else
-				imagepng($this->img);
-		}
-	}
-?>
+        $minValue = $this->axis->getLowerBoundary();
+        $maxValue = $this->axis->getUpperBoundary();
+        $stepValue = $this->axis->getTics();
+
+        $columnWidth = ($this->graphBRX - $this->graphTLX) / $this->sampleCount;
+
+        for ($i = 0; $i < $this->sampleCount; $i++) {
+            $x = $this->graphTLX + $i * ($this->graphBRX - $this->graphTLX) / $this->sampleCount;
+
+            $point = current($this->point);
+            next($this->point);
+
+            $value = $point->getY();
+
+            $ymin = $this->graphBRY - ($value - $minValue) * ($this->graphBRY - $this->graphTLY) / ($this->axis->displayDelta);
+
+            $this->text->printText($this->img, $x + $columnWidth / 2, $ymin - 5, $this->textColor, $value, $this->text->fontCondensed, $this->text->HORIZONTAL_CENTER_ALIGN | $this->text->VERTICAL_BOTTOM_ALIGN);
+
+            // Vertical bar
+
+            $x1 = $x + $columnWidth * 1 / 5;
+            $x2 = $x + $columnWidth * 4 / 5;
+
+            imagefilledrectangle($this->img, $x1, $ymin, $x2, $this->graphBRY - 1, $this->barColor2->getColor($this->img));
+            imagefilledrectangle($this->img, $x1 + 1, $ymin + 1, $x2 - 4, $this->graphBRY - 1, $this->barColor1->getColor($this->img));
+        }
+    }
+
+    /**
+    * Render the chart image
+    *
+    * @access	public
+    * @param	string		name of the file to render the image to (optional)
+    */
+
+    public function render($fileName = null)
+    {
+        $this->computeBound();
+        $this->computeLabelMargin();
+        $this->createImage();
+        $this->printLogo();
+        $this->printTitle();
+        $this->printAxis();
+        $this->printBar();
+
+        if (isset($fileName)) {
+            imagepng($this->img, $fileName);
+        } else {
+            imagepng($this->img);
+        }
+    }
+}

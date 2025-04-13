@@ -1,18 +1,43 @@
-tools/boca-submit-run-root-wrapper
-tools/safeexec
-debian/.debhelper/
-debian/boca-autojudge.substvars
-debian/boca-autojudge/
-debian/boca-common.substvars
-debian/boca-common/
-debian/boca-db.substvars
-debian/boca-db/
-debian/boca-submission-tools/
-debian/boca-web.substvars
-debian/boca-web/
-debian/boca.substvars
-debian/boca/
-debian/debhelper-build-stamp
-debian/files
-
+# --------------------------------------
+# Lixos temporários de editor / sistema
+# --------------------------------------
 *.swp
+*.swo
+*.bak
+*.tmp
+*.cache
+.php-cs-fixer.cache
+
+# --------------------------------------
+# Relatórios e arquivos gerados
+# --------------------------------------
+# Gráficos e estatísticas geradas (relatórios)
+src/admin/report/*.png
+src/admin/report/*.txt
+
+# Gráficos do Autojudge
+src/private/agentcode/
+src/private/webcast.*
+src/private/scoretmp/
+src/private/runtmp/
+src/private/runslog/
+
+# Balões personalizados (só se não quiser versionar)
+src/balloons/
+
+# Arquivos grandes que mudam a toda hora
+src/client-v2-*.js
+
+# --------------------------------------
+# ZIPs de problemas (se não quiser versionar exemplos)
+doc/problemexamples/*.zip
+
+# Arquivos PDF temporários ou gerados em tempo de execução
+src/private/secretcontest/*.pdf
+
+# --------------------------------------
+# Ferramentas e scripts de deploy
+# (só se não quiser versionar)
+tools/
+debian/
+

@@ -18,49 +18,63 @@
 // Last modified 05/aug/2012 by cassio@ime.usp.br
 
 ob_start();
-header ("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
-header ("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
-header ("Cache-Control: no-cache, must-revalidate");
-header ("Pragma: no-cache");
-header ("Content-Type: text/html; charset=utf-8");
+header("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
+header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+header("Cache-Control: no-cache, must-revalidate");
+header("Pragma: no-cache");
+header("Content-Type: text/html; charset=utf-8");
 session_start();
 $_SESSION["loc"] = dirname($_SERVER['PHP_SELF']);
-if($_SESSION["loc"]=="/") $_SESSION["loc"] = "";
+if ($_SESSION["loc"] == "/") {
+    $_SESSION["loc"] = "";
+}
 $_SESSION["locr"] = dirname(__FILE__);
-if($_SESSION["locr"]=="/") $_SESSION["locr"] = "";
+if ($_SESSION["locr"] == "/") {
+    $_SESSION["locr"] = "";
+}
 
 require_once("globals.php");
 require_once("db.php");
 
 if (!isset($_GET["name"])) {
-	if (ValidSession())
-	  DBLogOut($_SESSION["usertable"]["contestnumber"], 
-		   $_SESSION["usertable"]["usersitenumber"], $_SESSION["usertable"]["usernumber"],
-		   $_SESSION["usertable"]["username"]=='admin');
-	session_unset();
-	session_destroy();
-	session_start();
-	$_SESSION["loc"] = dirname($_SERVER['PHP_SELF']);
-	if($_SESSION["loc"]=="/") $_SESSION["loc"] = "";
-	$_SESSION["locr"] = dirname(__FILE__);
-	if($_SESSION["locr"]=="/") $_SESSION["locr"] = "";
+    if (ValidSession()) {
+        DBLogOut(
+            $_SESSION["usertable"]["contestnumber"],
+            $_SESSION["usertable"]["usersitenumber"],
+            $_SESSION["usertable"]["usernumber"],
+            $_SESSION["usertable"]["username"] == 'admin'
+        );
+    }
+    session_unset();
+    session_destroy();
+    session_start();
+    $_SESSION["loc"] = dirname($_SERVER['PHP_SELF']);
+    if ($_SESSION["loc"] == "/") {
+        $_SESSION["loc"] = "";
+    }
+    $_SESSION["locr"] = dirname(__FILE__);
+    if ($_SESSION["locr"] == "/") {
+        $_SESSION["locr"] = "";
+    }
 }
-if(isset($_GET["getsessionid"])) {
-	echo session_id();
-	exit;
+if (isset($_GET["getsessionid"])) {
+    echo session_id();
+    exit;
 }
 
 $coo = array();
-if(isset($_COOKIE['biscoitobocabombonera'])) {
-  $coo = explode('-',$_COOKIE['biscoitobocabombonera']);
-  if(count($coo) != 2 ||
-     strlen($coo[1])!=strlen(myhash('xxx')) ||
-     !is_numeric($coo[0]) ||
-     !ctype_alnum($coo[1]))
-    $coo = array();
+if (isset($_COOKIE['biscoitobocabombonera'])) {
+    $coo = explode('-', $_COOKIE['biscoitobocabombonera']);
+    if (count($coo) != 2 ||
+       strlen($coo[1]) != strlen(myhash('xxx')) ||
+       !is_numeric($coo[0]) ||
+       !ctype_alnum($coo[1])) {
+        $coo = array();
+    }
 }
-if(count($coo) != 2)
-  setcookie('biscoitobocabombonera',time() . '-' . myhash(time() . rand() . time() . rand()),time() + 240*3600);
+if (count($coo) != 2) {
+    setcookie('biscoitobocabombonera', time() . '-' . myhash(time() . rand() . time() . rand()), time() + 240 * 3600);
+}
 
 ob_end_flush();
 
@@ -84,38 +98,42 @@ function computeHASH()
 }
 </script>
 <?php
-if(function_exists("globalconf") && function_exists("sanitizeVariables")) {
-  if(isset($_GET["name"]) && $_GET["name"] != "" ) {
-	$name = $_GET["name"];
-	$password = $_GET["password"];
-	$usertable = DBLogIn($name, $password);
-	if(!$usertable) {
-		ForceLoad("index.php");
-	}
-	else {
-		if(($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
-			ForceLoad("index.php");
-		if($ct["contestlocalsite"]==$ct["contestmainsite"]) $main=true; else $main=false;
-		if(isset($_GET['action']) && $_GET['action'] == 'transfer') {
-			echo "TRANSFER OK";
-		} else {
-			if($main && $_SESSION["usertable"]["usertype"] == 'site') {
-				MSGError('Direct login of this user is not allowed');
-				unset($_SESSION["usertable"]);
-				ForceLoad("index.php");
-				exit;
-			}
-			echo "<script language=\"JavaScript\">\n";
-			echo "document.location='" . $_SESSION["usertable"]["usertype"] . "/index.php';\n";
-			echo "</script>\n";
-		}
-		exit;
-	}
-  }
+if (function_exists("globalconf") && function_exists("sanitizeVariables")) {
+    if (isset($_GET["name"]) && $_GET["name"] != "") {
+        $name = $_GET["name"];
+        $password = $_GET["password"];
+        $usertable = DBLogIn($name, $password);
+        if (!$usertable) {
+            ForceLoad("index.php");
+        } else {
+            if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
+                ForceLoad("index.php");
+            }
+            if ($ct["contestlocalsite"] == $ct["contestmainsite"]) {
+                $main = true;
+            } else {
+                $main = false;
+            }
+            if (isset($_GET['action']) && $_GET['action'] == 'transfer') {
+                echo "TRANSFER OK";
+            } else {
+                if ($main && $_SESSION["usertable"]["usertype"] == 'site') {
+                    MSGError('Direct login of this user is not allowed');
+                    unset($_SESSION["usertable"]);
+                    ForceLoad("index.php");
+                    exit;
+                }
+                echo "<script language=\"JavaScript\">\n";
+                echo "document.location='" . $_SESSION["usertable"]["usertype"] . "/index.php';\n";
+                echo "</script>\n";
+            }
+            exit;
+        }
+    }
 } else {
-  echo "<script language=\"JavaScript\">\n";
-  echo "alert('Unable to load config files. Possible file permission problem in the BOCA directory.');\n";
-  echo "</script>\n";
+    echo "<script language=\"JavaScript\">\n";
+    echo "alert('Unable to load config files. Possible file permission problem in the BOCA directory.');\n";
+    echo "</script>\n";
 }
 ?>
 </head>

@@ -18,27 +18,46 @@
 // Last modified 05/aug/2012 by cassio@ime.usp.br
 require('header.php');
 
-if(isset($_GET["order"]))
-$order = myhtmlspecialchars($_GET["order"]);
-else $order='';
-if(isset($_GET["user"]))
-$user = myhtmlspecialchars($_GET["user"]);
-else $user='';
-if(isset($_GET["site"]))
-$site = myhtmlspecialchars($_GET["site"]);
-else $site='';
-if(isset($_GET["type"]))
-$type = myhtmlspecialchars($_GET["type"]);
-else $type='';
-if(isset($_GET["ip"]))
-$ip = myhtmlspecialchars($_GET["ip"]);
-else $ip='';
-$get="&order=${order}&user=${user}&site=${site}&type=${type}&ip=${ip}";
-if (isset($_GET["limit"]) && $_GET["limit"]>0)
-  $limit = myhtmlspecialchars($_GET["limit"]);
-else $limit = 50;
-$log = DBGetLogs($order, $_SESSION["usertable"]["contestnumber"], 
-		$site, $user, $type, $ip, $limit);
+if (isset($_GET["order"])) {
+    $order = myhtmlspecialchars($_GET["order"]);
+} else {
+    $order = '';
+}
+if (isset($_GET["user"])) {
+    $user = myhtmlspecialchars($_GET["user"]);
+} else {
+    $user = '';
+}
+if (isset($_GET["site"])) {
+    $site = myhtmlspecialchars($_GET["site"]);
+} else {
+    $site = '';
+}
+if (isset($_GET["type"])) {
+    $type = myhtmlspecialchars($_GET["type"]);
+} else {
+    $type = '';
+}
+if (isset($_GET["ip"])) {
+    $ip = myhtmlspecialchars($_GET["ip"]);
+} else {
+    $ip = '';
+}
+$get = "&order=${order}&user=${user}&site=${site}&type=${type}&ip=${ip}";
+if (isset($_GET["limit"]) && $_GET["limit"] > 0) {
+    $limit = myhtmlspecialchars($_GET["limit"]);
+} else {
+    $limit = 50;
+}
+$log = DBGetLogs(
+    $order,
+    $_SESSION["usertable"]["contestnumber"],
+    $site,
+    $user,
+    $type,
+    $ip,
+    $limit
+);
 ?>
 <br>
 <table width="100%" border=1>
@@ -52,16 +71,16 @@ $log = DBGetLogs($order, $_SESSION["usertable"]["contestnumber"],
   <td><b>Status</b></td>
  </tr>
 <?php
-for ($i=0; $i<count($log); $i++) {
-  echo " <tr>\n";
-  echo "  <td nowrap><a href=\"log.php?site=" . $log[$i]["site"] . "&limit=$limit\">" . $log[$i]["site"] . "</a></td>\n";
-  echo "  <td nowrap><a href=\"log.php?user=" . $log[$i]["user"] . "&limit=$limit\">" . $log[$i]["user"] . "</a></td>\n";
-  echo "  <td nowrap><a href=\"log.php?ip=" . $log[$i]["ip"] . "&limit=$limit\">" . $log[$i]["ip"] . "</a></td>\n";
-  echo "  <td nowrap><a href=\"log.php?type=" . $log[$i]["type"] . "&limit=$limit\">" . $log[$i]["type"] . "</a></td>\n";
-  echo "  <td nowrap>" . dateconv($log[$i]["date"]) . "</td>\n";
-  echo "  <td nowrap>" . $log[$i]["data"] . "</td>\n";
-  echo "  <td nowrap>" . $log[$i]["status"] . "</td>\n";
-  echo "</tr>\n";
+for ($i = 0; $i < count($log); $i++) {
+    echo " <tr>\n";
+    echo "  <td nowrap><a href=\"log.php?site=" . $log[$i]["site"] . "&limit=$limit\">" . $log[$i]["site"] . "</a></td>\n";
+    echo "  <td nowrap><a href=\"log.php?user=" . $log[$i]["user"] . "&limit=$limit\">" . $log[$i]["user"] . "</a></td>\n";
+    echo "  <td nowrap><a href=\"log.php?ip=" . $log[$i]["ip"] . "&limit=$limit\">" . $log[$i]["ip"] . "</a></td>\n";
+    echo "  <td nowrap><a href=\"log.php?type=" . $log[$i]["type"] . "&limit=$limit\">" . $log[$i]["type"] . "</a></td>\n";
+    echo "  <td nowrap>" . dateconv($log[$i]["date"]) . "</td>\n";
+    echo "  <td nowrap>" . $log[$i]["data"] . "</td>\n";
+    echo "  <td nowrap>" . $log[$i]["status"] . "</td>\n";
+    echo "</tr>\n";
 }
 echo "</table>\n";
 

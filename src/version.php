@@ -1,4 +1,5 @@
 <?php
+
 ////////////////////////////////////////////////////////////////////////////////
 //BOCA Online Contest Administrator
 //    Copyright (C) 2003-2012 by BOCA Development Team (bocasystem@gmail.com)
@@ -27,4 +28,3 @@ echo "<!-- it under the terms of the GNU General Public License as published by 
 echo "<!-- the Free Software Foundation, either version 3 of the License, or -->\n";
 echo "<!-- (at your option) any later version. A copy of the  -->\n";
 echo "<!-- license can be found with this software or at http://www.gnu.org/licenses/ -->\n";
-?>

@@ -19,15 +19,15 @@
 require('header.php');
 
 if (isset($_POST["message"]) && isset($_POST["problem"]) && isset($_POST["Submit"]) && is_numeric($_POST["problem"])) {
-	if ($_POST["confirmation"] == "confirm") {
-		$param['contest']=$_SESSION["usertable"]["contestnumber"];
-		$param['site']=$_SESSION["usertable"]["usersitenumber"];
-		$param['user']= $_SESSION["usertable"]["usernumber"];
-		$param['problem'] = htmlspecialchars($_POST["problem"]);
-		$param['question'] = htmlspecialchars($_POST["message"]);
-		DBNewClar($param);
-	}
-	ForceLoad("clar.php");
+    if ($_POST["confirmation"] == "confirm") {
+        $param['contest'] = $_SESSION["usertable"]["contestnumber"];
+        $param['site'] = $_SESSION["usertable"]["usersitenumber"];
+        $param['user'] = $_SESSION["usertable"]["usernumber"];
+        $param['problem'] = htmlspecialchars($_POST["problem"]);
+        $param['question'] = htmlspecialchars($_POST["message"]);
+        DBNewClar($param);
+    }
+    ForceLoad("clar.php");
 }
 $_SESSION["popuptime"] = time();
 ?>
@@ -42,32 +42,41 @@ $_SESSION["popuptime"] = time();
   <td><b>Answer</b></td>
  </tr>
 <?php
-if(($st = DBSiteInfo($_SESSION["usertable"]["contestnumber"],$_SESSION["usertable"]["usersitenumber"])) == null)
-	ForceLoad("../index.php");
-$clar = DBUserClars($_SESSION["usertable"]["contestnumber"],
-					$_SESSION["usertable"]["usersitenumber"],
-					$_SESSION["usertable"]["usernumber"]);
-for ($i=0; $i<count($clar); $i++) {
-  echo " <tr>\n";
-//  echo "  <td nowrap>" . $clar[$i]["number"] . "</td>\n";
-  echo "  <td nowrap>" . dateconvminutes($clar[$i]["timestamp"]) . "</td>\n";
-  echo "  <td nowrap>" . $clar[$i]["problem"] . "</td>\n";
-//  echo "  <td nowrap>" . $clar[$i]["status"] . "</td>\n";
-  if ($clar[$i]["question"] == "") $clar[$i]["question"] = "&nbsp;";
-  echo "  <td>";
-//  echo "<pre>" . $clar[$i]["question"] . "</pre>";
-  echo "  <textarea name=\"m$i\" cols=\"60\" rows=\"8\" readonly>". unsanitizeText($clar[$i]["question"]) ."</textarea>\n";
-  echo "</td>\n";
+if (($st = DBSiteInfo($_SESSION["usertable"]["contestnumber"], $_SESSION["usertable"]["usersitenumber"])) == null) {
+    ForceLoad("../index.php");
+}
+$clar = DBUserClars(
+    $_SESSION["usertable"]["contestnumber"],
+    $_SESSION["usertable"]["usersitenumber"],
+    $_SESSION["usertable"]["usernumber"]
+);
+for ($i = 0; $i < count($clar); $i++) {
+    echo " <tr>\n";
+    //  echo "  <td nowrap>" . $clar[$i]["number"] . "</td>\n";
+    echo "  <td nowrap>" . dateconvminutes($clar[$i]["timestamp"]) . "</td>\n";
+    echo "  <td nowrap>" . $clar[$i]["problem"] . "</td>\n";
+    //  echo "  <td nowrap>" . $clar[$i]["status"] . "</td>\n";
+    if ($clar[$i]["question"] == "") {
+        $clar[$i]["question"] = "&nbsp;";
+    }
+    echo "  <td>";
+    //  echo "<pre>" . $clar[$i]["question"] . "</pre>";
+    echo "  <textarea name=\"m$i\" cols=\"60\" rows=\"8\" readonly>". unsanitizeText($clar[$i]["question"]) ."</textarea>\n";
+    echo "</td>\n";
 
-  if (trim($clar[$i]["answer"]) == "") $clar[$i]["answer"] = "Not answered yet";
-  echo "  <td>";
-//  echo "  <pre>" . $clar[$i]["answer"] . "</pre>";
-  echo "  <textarea name=\"a$i\" cols=\"60\" rows=\"8\" readonly>". unsanitizeText($clar[$i]["answer"]) ."</textarea>\n";
-  echo "</td>\n";
-  echo " </tr>\n";
+    if (trim($clar[$i]["answer"]) == "") {
+        $clar[$i]["answer"] = "Not answered yet";
+    }
+    echo "  <td>";
+    //  echo "  <pre>" . $clar[$i]["answer"] . "</pre>";
+    echo "  <textarea name=\"a$i\" cols=\"60\" rows=\"8\" readonly>". unsanitizeText($clar[$i]["answer"]) ."</textarea>\n";
+    echo "</td>\n";
+    echo " </tr>\n";
 }
 echo "</table>";
-if (count($clar) == 0) echo "<br><center><b><font color=\"#ff0000\">NO CLARIFICATIONS AVAILABLE</font></b></center>";
+if (count($clar) == 0) {
+    echo "<br><center><b><font color=\"#ff0000\">NO CLARIFICATIONS AVAILABLE</font></b></center>";
+}
 
 ?>
 
@@ -82,8 +91,9 @@ if (count($clar) == 0) echo "<br><center><b><font color=\"#ff0000\">NO CLARIFICA
           <select name="problem" onclick="Arquivo()">
 <?php
 $prob = DBGetAllProblems($_SESSION["usertable"]["contestnumber"]);
-for ($i=0;$i<count($prob);$i++)
-	echo "<option value=\"" . $prob[$i]["number"] . "\">" . $prob[$i]["problem"] . "</option>\n";
+for ($i = 0;$i < count($prob);$i++) {
+    echo "<option value=\"" . $prob[$i]["number"] . "\">" . $prob[$i]["problem"] . "</option>\n";
+}
 ?>
 	  </select>
         </td>

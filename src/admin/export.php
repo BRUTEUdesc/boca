@@ -16,44 +16,51 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 // Last modified 05/aug/2012 by cassio@ime.usp.br
-//Change list 
+//Change list
 // 15/June/2011 by cassio@ime.usp.br: created based on import.php
 require('header.php');
 
-if(isset($_POST["Submit"]) || isset($_POST['Submit1'])) {
-	if ($_POST["confirmation"] == "confirm" && isset($_POST['localsite']) && is_numeric($_POST['localsite']) && 
-		isset($_POST['challenge']) && isset($_POST['password'])) {
-		$localsite=$_POST['localsite'];
-		
-		header ("Content-transfer-encoding: binary\n");
-		header ("Content-type: application/force-download");
-//header ("Content-type: application/octet-stream");
-//if (strstr($_SERVER["HTTP_USER_AGENT"], "MSIE"))
-//	header("Content-Disposition: filename=" .$_GET["filename"]); // For IE
-//else
-		header ("Content-Disposition: attachment; filename=export.dat");
-		ob_end_flush();
-		$reduced = false;
-		if(isset($_POST["Submit"]) && $_POST['Submit']=="Reduced Export") {
-			$reduced = true;
-		}
-		
-		$fromsite = $localsite;
-		$siteinfo = DBSiteInfo($_SESSION["usertable"]["contestnumber"],$fromsite);
-		$scores = explode(",", $siteinfo['siteglobalscore']);
-		if(count($scores)==0 || (count($scores)==1 && !is_numeric($scores[0]))) $scores=array($fromsite);
-		$judges = explode(",", $siteinfo['sitejudging']);
-		if(count($judges)==0 || (count($judges)==1 && !is_numeric($judges[0]))) $judges=array($fromsite);
-		$scores = array_unique(array_merge($scores,$judges));
-		if(in_array(0,$scores)) $scores=null;
+if (isset($_POST["Submit"]) || isset($_POST['Submit1'])) {
+    if ($_POST["confirmation"] == "confirm" && isset($_POST['localsite']) && is_numeric($_POST['localsite']) &&
+        isset($_POST['challenge']) && isset($_POST['password'])) {
+        $localsite = $_POST['localsite'];
 
-		$xml = generateXML($_SESSION["usertable"]["contestnumber"],$localsite,$scores,$reduced);
-		if(isset($_POST['nopassword']) && $_POST['nopassword']=='true')
-			echo $xml;
-		else
-			echo myrawurlencode($_POST['challenge']) . " " . encryptData($xml,($_POST['password']));
-		exit;
-	}
+        header("Content-transfer-encoding: binary\n");
+        header("Content-type: application/force-download");
+        //header ("Content-type: application/octet-stream");
+        //if (strstr($_SERVER["HTTP_USER_AGENT"], "MSIE"))
+        //	header("Content-Disposition: filename=" .$_GET["filename"]); // For IE
+        //else
+        header("Content-Disposition: attachment; filename=export.dat");
+        ob_end_flush();
+        $reduced = false;
+        if (isset($_POST["Submit"]) && $_POST['Submit'] == "Reduced Export") {
+            $reduced = true;
+        }
+
+        $fromsite = $localsite;
+        $siteinfo = DBSiteInfo($_SESSION["usertable"]["contestnumber"], $fromsite);
+        $scores = explode(",", $siteinfo['siteglobalscore']);
+        if (count($scores) == 0 || (count($scores) == 1 && !is_numeric($scores[0]))) {
+            $scores = array($fromsite);
+        }
+        $judges = explode(",", $siteinfo['sitejudging']);
+        if (count($judges) == 0 || (count($judges) == 1 && !is_numeric($judges[0]))) {
+            $judges = array($fromsite);
+        }
+        $scores = array_unique(array_merge($scores, $judges));
+        if (in_array(0, $scores)) {
+            $scores = null;
+        }
+
+        $xml = generateXML($_SESSION["usertable"]["contestnumber"], $localsite, $scores, $reduced);
+        if (isset($_POST['nopassword']) && $_POST['nopassword'] == 'true') {
+            echo $xml;
+        } else {
+            echo myrawurlencode($_POST['challenge']) . " " . encryptData($xml, ($_POST['password']));
+        }
+        exit;
+    }
 }
 ob_end_flush();
 ?>

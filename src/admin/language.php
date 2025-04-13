@@ -18,30 +18,31 @@
 // Last modified 08/aug/2015 by cassio@ime.usp.br
 require('header.php');
 
-if(($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
-	ForceLoad("../index.php");
-
-if (isset($_GET["delete"]) && is_numeric($_GET["delete"])) {
-	$param["number"] = $_GET["delete"];
-	DBDeleteLanguage ($_SESSION["usertable"]["contestnumber"],$param);
-	ForceLoad("language.php");
+if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
+    ForceLoad("../index.php");
 }
 
-if (isset($_POST["Submit3"]) && isset($_POST["langnumber"]) && is_numeric($_POST["langnumber"]) && 
+if (isset($_GET["delete"]) && is_numeric($_GET["delete"])) {
+    $param["number"] = $_GET["delete"];
+    DBDeleteLanguage($_SESSION["usertable"]["contestnumber"], $param);
+    ForceLoad("language.php");
+}
+
+if (isset($_POST["Submit3"]) && isset($_POST["langnumber"]) && is_numeric($_POST["langnumber"]) &&
     isset($_POST["langname"]) && $_POST["langname"] != "") {
-	if(strpos(trim($_POST["langname"]),' ')!==false) {
-		$_POST["confirmation"]='';
-		MSGError('Language name cannot have spaces');
-	} else {
-	if ($_POST["confirmation"] == "confirm") {
-		$param = array();
-		$param['number'] = $_POST['langnumber'];
-		$param['name'] = trim($_POST['langname']);
-		$param['extension'] = $_POST['langextension'];
-		DBNewLanguage ($_SESSION["usertable"]["contestnumber"], $param);
-	}
-	}
-	ForceLoad("language.php");
+    if (strpos(trim($_POST["langname"]), ' ') !== false) {
+        $_POST["confirmation"] = '';
+        MSGError('Language name cannot have spaces');
+    } else {
+        if ($_POST["confirmation"] == "confirm") {
+            $param = array();
+            $param['number'] = $_POST['langnumber'];
+            $param['name'] = trim($_POST['langname']);
+            $param['extension'] = $_POST['langextension'];
+            DBNewLanguage($_SESSION["usertable"]["contestnumber"], $param);
+        }
+    }
+    ForceLoad("language.php");
 }
 ?>
 <br>
@@ -67,16 +68,18 @@ if (isset($_POST["Submit3"]) && isset($_POST["langnumber"]) && is_numeric($_POST
 <?php
 $lang = DBGetLanguages($_SESSION["usertable"]["contestnumber"]);
 $cf = globalconf();
-for ($i=0; $i<count($lang); $i++) {
-  echo " <tr>\n";
-  echo "  <td nowrap><a href=\"javascript: conf2('language.php?delete=" . $lang[$i]["number"] . "')\">" . 
-	  $lang[$i]["number"] . "</a></td>\n";
-  echo "  <td nowrap>" . $lang[$i]["name"] . "</td>\n";
-  echo "  <td nowrap>" . $lang[$i]["extension"] . "</td>\n";
-  echo " </tr>\n";
+for ($i = 0; $i < count($lang); $i++) {
+    echo " <tr>\n";
+    echo "  <td nowrap><a href=\"javascript: conf2('language.php?delete=" . $lang[$i]["number"] . "')\">" .
+        $lang[$i]["number"] . "</a></td>\n";
+    echo "  <td nowrap>" . $lang[$i]["name"] . "</td>\n";
+    echo "  <td nowrap>" . $lang[$i]["extension"] . "</td>\n";
+    echo " </tr>\n";
 }
 echo "</table>";
-if (count($lang) == 0) echo "<br><center><b><font color=\"#ff0000\">NO LANGUAGES DEFINED</font></b></center>";
+if (count($lang) == 0) {
+    echo "<br><center><b><font color=\"#ff0000\">NO LANGUAGES DEFINED</font></b></center>";
+}
 
 ?>
 

@@ -18,132 +18,203 @@
 // Last modified 21/jul/2012 by cassio@ime.usp.br
 require 'header.php';
 
-$contest=$_SESSION["usertable"]["contestnumber"];
+$contest = $_SESSION["usertable"]["contestnumber"];
 
-if(($ct = DBContestInfo($contest)) == null)
-	ForceLoad("$loc/index.php");
-$localsite=$ct["contestlocalsite"];
-$mainsite=$ct["contestmainsite"];
-if ($localsite == $mainsite) $main=true; else $main=false;
+$contest_path = "/var/www/boca/src/private/secretcontest/contest.pdf";
 
-if($main) {
-  if (isset($_POST["SubmitDC"]) && $_POST["SubmitDC"] == "Delete ALL clars") {
-	if ($_POST["confirmation"] == "confirm") {
-		DBSiteDeleteAllClars ($_SESSION["usertable"]["contestnumber"], -1,
-			$_SESSION["usertable"]["usernumber"], $_SESSION["usertable"]["usersitenumber"]);
-	}
-	ForceLoad("contest.php");
-  }
-  if (isset($_POST["SubmitDR"]) && $_POST["SubmitDR"] == "Delete ALL runs") {
-	if ($_POST["confirmation"] == "confirm") {
-		DBSiteDeleteAllRuns ($_SESSION["usertable"]["contestnumber"], -1,
-			$_SESSION["usertable"]["usernumber"], $_SESSION["usertable"]["usersitenumber"]);
-	}
-	ForceLoad("contest.php");
-  }
-  if (isset($_POST["SubmitDT"]) && $_POST["SubmitDT"] == "Delete ALL tasks") {
-	if ($_POST["confirmation"] == "confirm") {
-		DBSiteDeleteAllTasks ($_SESSION["usertable"]["contestnumber"], -1,
-			$_SESSION["usertable"]["usernumber"], $_SESSION["usertable"]["usersitenumber"]);
-	}
-	ForceLoad("contest.php");
-  }
-  if (isset($_POST["SubmitDB"]) && $_POST["SubmitDB"] == "Delete ALL bkps") {
-	if ($_POST["confirmation"] == "confirm") {
-		DBSiteDeleteAllBkps ($_SESSION["usertable"]["contestnumber"], -1,
-			$_SESSION["usertable"]["usernumber"], $_SESSION["usertable"]["usersitenumber"]);
-	}
-	ForceLoad("contest.php");
-  }
+if (($ct = DBContestInfo($contest)) == null) {
+    ForceLoad("$loc/index.php");
+}
+$localsite = $ct["contestlocalsite"];
+$mainsite = $ct["contestmainsite"];
+if ($localsite == $mainsite) {
+    $main = true;
+} else {
+    $main = false;
 }
 
-if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["penalty"]) && 
-    isset($_POST["maxfilesize"]) && isset($_POST["mainsite"]) && isset($_POST["name"]) && 
-    $_POST["name"] != "" && isset($_POST["lastmileanswer"]) && is_numeric($_POST["lastmileanswer"]) && 
-    is_numeric($_POST["mainsite"]) && isset($_POST["lastmilescore"]) && is_numeric($_POST["lastmilescore"]) && 
+if ($main) {
+    if (isset($_POST["SubmitDC"]) && $_POST["SubmitDC"] == "Delete ALL clars") {
+        if ($_POST["confirmation"] == "confirm") {
+            DBSiteDeleteAllClars(
+                $_SESSION["usertable"]["contestnumber"],
+                -1,
+                $_SESSION["usertable"]["usernumber"],
+                $_SESSION["usertable"]["usersitenumber"]
+            );
+        }
+        ForceLoad("contest.php");
+    }
+    if (isset($_POST["SubmitDR"]) && $_POST["SubmitDR"] == "Delete ALL runs") {
+        if ($_POST["confirmation"] == "confirm") {
+            DBSiteDeleteAllRuns(
+                $_SESSION["usertable"]["contestnumber"],
+                -1,
+                $_SESSION["usertable"]["usernumber"],
+                $_SESSION["usertable"]["usersitenumber"]
+            );
+        }
+        ForceLoad("contest.php");
+    }
+    if (isset($_POST["SubmitDT"]) && $_POST["SubmitDT"] == "Delete ALL tasks") {
+        if ($_POST["confirmation"] == "confirm") {
+            DBSiteDeleteAllTasks(
+                $_SESSION["usertable"]["contestnumber"],
+                -1,
+                $_SESSION["usertable"]["usernumber"],
+                $_SESSION["usertable"]["usersitenumber"]
+            );
+        }
+        ForceLoad("contest.php");
+    }
+    if (isset($_POST["SubmitDB"]) && $_POST["SubmitDB"] == "Delete ALL bkps") {
+        if ($_POST["confirmation"] == "confirm") {
+            DBSiteDeleteAllBkps(
+                $_SESSION["usertable"]["contestnumber"],
+                -1,
+                $_SESSION["usertable"]["usernumber"],
+                $_SESSION["usertable"]["usersitenumber"]
+            );
+        }
+        ForceLoad("contest.php");
+    }
+}
+
+if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["penalty"]) &&
+    isset($_POST["maxfilesize"]) && isset($_POST["mainsite"]) && isset($_POST["name"]) &&
+    $_POST["name"] != "" && isset($_POST["lastmileanswer"]) && is_numeric($_POST["lastmileanswer"]) &&
+    is_numeric($_POST["mainsite"]) && isset($_POST["lastmilescore"]) && is_numeric($_POST["lastmilescore"]) &&
     isset($_POST["duration"]) && is_numeric($_POST["duration"]) && isset($_POST['localsite']) &&
-    isset($_POST["startdateh"]) && $_POST["startdateh"] >= 0 && $_POST["startdateh"] <= 23 && 
+    isset($_POST["startdateh"]) && $_POST["startdateh"] >= 0 && $_POST["startdateh"] <= 23 &&
     isset($_POST["startdatemin"]) && $_POST["startdatemin"] >= 0 && $_POST["startdatemin"] <= 59 &&
-    isset($_POST["startdated"]) && isset($_POST["startdatem"]) && isset($_POST["startdatey"]) && 
+    isset($_POST["startdated"]) && isset($_POST["startdatem"]) && isset($_POST["startdatey"]) &&
     checkdate($_POST["startdatem"], $_POST["startdated"], $_POST["startdatey"])) {
-	if ($_POST["confirmation"] == "confirm") {
-		$param['number']=$contest;
-		if($_POST["Submit3"] == "Become Main Site") {
-			$param['mainsite']=$ct["contestlocalsite"];
-		} else {
-			$at = false;
-			if(!is_numeric($_POST['localsite']) || $_POST['localsite']<=0) $_POST['localsite']=-1;
-			if($_POST["Submit3"] == "Update Contest and All Sites") $at = true;
-			$t = mktime ($_POST["startdateh"], $_POST["startdatemin"], 0, 
-						 $_POST["startdatem"], $_POST["startdated"], $_POST["startdatey"]);
-			$param['localsite']=$_POST['localsite'];
-			$param['name']=$_POST["name"];
-			$param['startdate']=$t;
-			$param['duration']=$_POST["duration"]*60;
-			$param['lastmileanswer']=$_POST["lastmileanswer"]*60;
-			$param['lastmilescore']= $_POST["lastmilescore"]*60;
-			$param['penalty']=$_POST["penalty"]*60;
-			$param['maxfilesize']=$_POST["maxfilesize"]*1000;
-			$param['active']=0;
-			$param['mainsite']=$_POST["mainsite"];
-			$param['mainsiteurl']=$_POST["mainsiteurl"];
-			$param['unlockkey']=$_POST["unlockkey"];
-			
-			if (isset($_FILES["keyfile"]) && $_FILES["keyfile"]["name"]!="") {
-                $type=myhtmlspecialchars($_FILES["keyfile"]["type"]);
-                $size=myhtmlspecialchars($_FILES["keyfile"]["size"]);
-                $name=myhtmlspecialchars($_FILES["keyfile"]["name"]);
-                $temp=myhtmlspecialchars($_FILES["keyfile"]["tmp_name"]);
+    if ($_POST["confirmation"] == "confirm") {
+        $param['number'] = $contest;
+
+        if (isset($_FILES["contestPDF"]) && $_FILES["contestPDF"]["name"] != "") {
+            $type = myhtmlspecialchars($_FILES["contestPDF"]["type"]);
+            $size = myhtmlspecialchars($_FILES["contestPDF"]["size"]);
+            $name = myhtmlspecialchars($_FILES["contestPDF"]["name"]);
+            $temp = myhtmlspecialchars($_FILES["contestPDF"]["tmp_name"]);
+
+            if (!is_uploaded_file($temp)) {
+                IntrusionNotify("file upload problem.");
+                ForceLoad("../index.php");
+            }
+
+            // Verifique se o arquivo é um PDF
+            $file_ext = strtolower(end(explode('.', $name)));
+            if ($file_ext != "pdf") {
+                MSGError('Please upload a valid PDF file.');
+            } else {
+                if (!move_uploaded_file($temp, $contest_path)) {
+                    MSGError('Failed to upload Contest PDF.');
+                }
+            }
+        }
+
+        if (isset($_POST["deletePDF"]) && $_POST["deletePDF"] == "Yes") {
+            if (file_exists($contest_path)) {
+                // Delete the file
+                if (unlink($contest_path)) {
+                    echo "Contest PDF deleted successfully!";
+                } else {
+                    echo "Failed to delete Contest PDF.";
+                }
+            } else {
+                echo "Contest PDF does not exist.";
+            }
+        }
+
+        if ($_POST["Submit3"] == "Become Main Site") {
+            $param['mainsite'] = $ct["contestlocalsite"];
+        } else {
+            $at = false;
+            if (!is_numeric($_POST['localsite']) || $_POST['localsite'] <= 0) {
+                $_POST['localsite'] = -1;
+            }
+            if ($_POST["Submit3"] == "Update Contest and All Sites") {
+                $at = true;
+            }
+            $t = mktime(
+                $_POST["startdateh"],
+                $_POST["startdatemin"],
+                0,
+                $_POST["startdatem"],
+                $_POST["startdated"],
+                $_POST["startdatey"]
+            );
+            $param['localsite'] = $_POST['localsite'];
+            $param['name'] = $_POST["name"];
+            $param['startdate'] = $t;
+            $param['duration'] = $_POST["duration"] * 60;
+            $param['lastmileanswer'] = $_POST["lastmileanswer"] * 60;
+            $param['lastmilescore'] = $_POST["lastmilescore"] * 60;
+            $param['penalty'] = $_POST["penalty"] * 60;
+            $param['maxfilesize'] = $_POST["maxfilesize"] * 1000;
+            $param['active'] = 0;
+            $param['mainsite'] = $_POST["mainsite"];
+            $param['mainsiteurl'] = $_POST["mainsiteurl"];
+            $param['unlockkey'] = $_POST["unlockkey"];
+
+            if (isset($_FILES["keyfile"]) && $_FILES["keyfile"]["name"] != "") {
+                $type = myhtmlspecialchars($_FILES["keyfile"]["type"]);
+                $size = myhtmlspecialchars($_FILES["keyfile"]["size"]);
+                $name = myhtmlspecialchars($_FILES["keyfile"]["name"]);
+                $temp = myhtmlspecialchars($_FILES["keyfile"]["tmp_name"]);
                 if (!is_uploaded_file($temp)) {
-					IntrusionNotify("file upload problem.");
-					ForceLoad("../index.php");
+                    IntrusionNotify("file upload problem.");
+                    ForceLoad("../index.php");
                 }
                 if (($ar = file($temp)) === false) {
-					IntrusionNotify("Unable to open the uploaded file.");
-					ForceLoad("user.php");
+                    IntrusionNotify("Unable to open the uploaded file.");
+                    ForceLoad("user.php");
                 }
-				$dd=0;
-				foreach($ar as $val => $key) {
-					$key=trim($key);
-					if($key=='') {
-						unset($ar[$val]);
-						continue;
-					}
-					if(substr($key,10,5) != '#####') {
-						MSGError('Invalid key in the file -- not importing any keys');
-						$dd=0;
-						break;
-					}
-					if(isset($param['unlockkey']) && $param['unlockkey'] != '') {
-						$pass=decryptData(substr($key,15),$param['unlockkey'],'includekeys');
-						if(substr($pass,0,5) != '#####') {
-							MSGError('Invalid key in the file -- not importing any keys');
-							$dd=0;
-							break;
-						}
-					}
-					$ar[$val]=$key;
-					$dd++;
-				}
-				if($dd > 0) {
-					$param['keys']=implode(',',$ar);
-					MSGError(count($ar) . ' keys are being imported from the file');
-					DBClearProblemTmp($_SESSION["usertable"]["contestnumber"]);
-				}
-			}
-			$param['atualizasites']=$at;
-		}
-		DBUpdateContest ($param);
-		if(strlen($param['unlockkey'])>1) {
-			DBClearProblemTmp($_SESSION["usertable"]["contestnumber"]);
-			DBGetFullProblemData($_SESSION["usertable"]["contestnumber"],true);
-		}
-	}
-	if(($ct = DBContestInfo($contest)) == null)
-	  ForceLoad("$loc/index.php");
-	if ($ct["contestlocalsite"]!=$localsite || $mainsite!=$ct["contestmainsite"])
-	  ForceLoad("$loc/index.php");
-	ForceLoad("contest.php");
+                $dd = 0;
+                foreach ($ar as $val => $key) {
+                    $key = trim($key);
+                    if ($key == '') {
+                        unset($ar[$val]);
+                        continue;
+                    }
+                    if (substr($key, 10, 5) != '#####') {
+                        MSGError('Invalid key in the file -- not importing any keys');
+                        $dd = 0;
+                        break;
+                    }
+                    if (isset($param['unlockkey']) && $param['unlockkey'] != '') {
+                        $pass = decryptData(substr($key, 15), $param['unlockkey'], 'includekeys');
+                        if (substr($pass, 0, 5) != '#####') {
+                            MSGError('Invalid key in the file -- not importing any keys');
+                            $dd = 0;
+                            break;
+                        }
+                    }
+                    $ar[$val] = $key;
+                    $dd++;
+                }
+                if ($dd > 0) {
+                    $param['keys'] = implode(',', $ar);
+                    MSGError(count($ar) . ' keys are being imported from the file');
+                    DBClearProblemTmp($_SESSION["usertable"]["contestnumber"]);
+                }
+            }
+            $param['atualizasites'] = $at;
+        }
+        DBUpdateContest($param);
+        if (strlen($param['unlockkey']) > 1) {
+            DBClearProblemTmp($_SESSION["usertable"]["contestnumber"]);
+            DBGetFullProblemData($_SESSION["usertable"]["contestnumber"], true);
+        }
+    }
+    if (($ct = DBContestInfo($contest)) == null) {
+        ForceLoad("$loc/index.php");
+    }
+    if ($ct["contestlocalsite"] != $localsite || $mainsite != $ct["contestmainsite"]) {
+        ForceLoad("$loc/index.php");
+    }
+    ForceLoad("contest.php");
 }
 ?>
 <br>
@@ -176,7 +247,7 @@ flow. ARE YOU SURE?")) {
       <tr>
         <td width="35%" align=right>Contest number:</td>
         <td width="65%">
-<?php 
+<?php
 echo $contest;
 ?>
         </td>
@@ -184,52 +255,74 @@ echo $contest;
       <tr>
         <td width="35%" align=right>Name:</td>
         <td width="65%">
-          <input type="text" <?php if(!$main) echo "readonly"; ?> name="name" value="<?php echo $ct["contestname"]; ?>" size="50" maxlength="50" />
+          <input type="text" <?php if (!$main) {
+              echo "readonly";
+          } ?> name="name" value="<?php echo $ct["contestname"]; ?>" size="50" maxlength="50" />
         </td>
       </tr>
       <tr>
         <td width="35%" align=right>Start date:</td>
         <td width="65%"> hh:mm
-          <input type="text" <?php if(!$main) echo "readonly"; ?> name="startdateh" value="<?php echo date("H", $ct["conteststartdate"]); ?>" size="2" maxlength="2" />
+          <input type="text" <?php if (!$main) {
+              echo "readonly";
+          } ?> name="startdateh" value="<?php echo date("H", $ct["conteststartdate"]); ?>" size="2" maxlength="2" />
           :
-          <input type="text" <?php if(!$main) echo "readonly"; ?> name="startdatemin" value="<?php echo date("i", $ct["conteststartdate"]); ?>" size="2" maxlength="2" />
+          <input type="text" <?php if (!$main) {
+              echo "readonly";
+          } ?> name="startdatemin" value="<?php echo date("i", $ct["conteststartdate"]); ?>" size="2" maxlength="2" />
           &nbsp; &nbsp; dd/mm/yyyy
-          <input type="text" <?php if(!$main) echo "readonly"; ?> name="startdated" value="<?php echo date("d", $ct["conteststartdate"]); ?>" size="2" maxlength="2" />
+          <input type="text" <?php if (!$main) {
+              echo "readonly";
+          } ?> name="startdated" value="<?php echo date("d", $ct["conteststartdate"]); ?>" size="2" maxlength="2" />
           /
-          <input type="text" <?php if(!$main) echo "readonly"; ?> name="startdatem" value="<?php echo date("m", $ct["conteststartdate"]); ?>" size="2" maxlength="2" />
+          <input type="text" <?php if (!$main) {
+              echo "readonly";
+          } ?> name="startdatem" value="<?php echo date("m", $ct["conteststartdate"]); ?>" size="2" maxlength="2" />
           /
-          <input type="text" <?php if(!$main) echo "readonly"; ?> name="startdatey" value="<?php echo date("Y", $ct["conteststartdate"]); ?>" size="4" maxlength="4" />
+          <input type="text" <?php if (!$main) {
+              echo "readonly";
+          } ?> name="startdatey" value="<?php echo date("Y", $ct["conteststartdate"]); ?>" size="4" maxlength="4" />
         </td>
       </tr>
       <tr>
         <td width="35%" align=right>Duration (in minutes):</td>
         <td width="65%">
-          <input type="text" name="duration" <?php if(!$main) echo "readonly"; ?> value="<?php echo $ct["contestduration"]/60; ?>" size="20" maxlength="20" />
+          <input type="text" name="duration" <?php if (!$main) {
+              echo "readonly";
+          } ?> value="<?php echo $ct["contestduration"] / 60; ?>" size="20" maxlength="20" />
         </td>
       </tr>
       <tr>
         <td width="35%" align=right>Stop answering (in minutes):</td>
         <td width="65%">
-          <input type="text" name="lastmileanswer" <?php if(!$main) echo "readonly"; ?> value="<?php echo $ct["contestlastmileanswer"]/60; ?>" size="20" maxlength="20" />
+          <input type="text" name="lastmileanswer" <?php if (!$main) {
+              echo "readonly";
+          } ?> value="<?php echo $ct["contestlastmileanswer"] / 60; ?>" size="20" maxlength="20" />
         </td>
       </tr>
       <tr>
         <td width="35%" align=right>Stop scoreboard (in minutes):</td>
         <td width="65%">
-          <input type="text" name="lastmilescore" <?php if(!$main) echo "readonly"; ?> value="<?php echo $ct["contestlastmilescore"]/60; ?>" size="20" maxlength="20" />
+          <input type="text" name="lastmilescore" <?php if (!$main) {
+              echo "readonly";
+          } ?> value="<?php echo $ct["contestlastmilescore"] / 60; ?>" size="20" maxlength="20" />
         </td>
       </tr>
       <tr>
         <td width="35%" align=right>Penalty (in minutes):</td>
         <td width="65%">
-          <input type="text" name="penalty" <?php if(!$main) echo "readonly"; ?> value="<?php echo $ct["contestpenalty"]/60; ?>" size="20" maxlength="20" />
+          <input type="text" name="penalty" <?php if (!$main) {
+              echo "readonly";
+          } ?> value="<?php echo $ct["contestpenalty"] / 60; ?>" size="20" maxlength="20" />
         </td>
       </tr>
       <tr>
         <td width="35%" align=right>Max file size allowed for teams (in KB):</td>
         <td width="65%">
-          <input type="text" name="maxfilesize" <?php if(!$main) echo "readonly"; ?> 
-		value="<?php echo $ct["contestmaxfilesize"]/1000; ?>" size="20" maxlength="20" />
+          <input type="text" name="maxfilesize" <?php if (!$main) {
+              echo "readonly";
+          } ?> 
+		value="<?php echo $ct["contestmaxfilesize"] / 1000; ?>" size="20" maxlength="20" />
         </td>
       </tr>
   <tr><td width="35%" align=right>
@@ -248,40 +341,66 @@ echo $contest;
         </td>
       </tr>
 <?php
-  $exd = explode(' ',$ct["contestmainsiteurl"]);
-  if(count($exd) >= 4 && is_numeric($exd[3]) && $exd[3] > 0)
+  $exd = explode(' ', $ct["contestmainsiteurl"]);
+if (count($exd) >= 4 && is_numeric($exd[3]) && $exd[3] > 0) {
     echo "<tr><td width=\"35%\" align=right>Last update from mainsite:</td><td width=\"65%\">" . dateconv($exd[3]) . "</td></tr>\n";
+}
 ?>
       <tr>
 							<td width="35%" align=right>Unlock password (only use it within a <b>secure network</b>):</td>
         <td width="65%">
           <input type="password" name="unlockkey" value="" size="40" maxlength="200" />
-		   <?php if(strlen($ct["contestunlockkey"]) > 1) echo "<b><= has been set</b>"; ?>
+		   <?php if (strlen($ct["contestunlockkey"]) > 1) {
+		       echo "<b><= has been set</b>";
+		   } ?>
         </td>
       </tr>
       <tr>
 							<td width="35%" align=right>Keys (only use it within a <b>secure network</b>):</td>
         <td width="65%">
           <input type="file" name="keyfile" size="40">
-		   <?php if(strlen($ct["contestkeys"]) > 32) echo "<b><= has been set</b>"; ?>
+		   <?php if (strlen($ct["contestkeys"]) > 32) {
+		       echo "<b><= has been set</b>";
+		   } ?>
         </td>
       </tr>
       <tr>
         <td width="35%" align=right>Contest main site number:</td>
         <td width="65%">
-          <input type="text" name="mainsite" <?php if(!$main) echo "readonly"; ?> value="<?php echo $ct["contestmainsite"]; ?>" size="4" maxlength="4" />
+          <input type="text" name="mainsite" <?php if (!$main) {
+              echo "readonly";
+          } ?> value="<?php echo $ct["contestmainsite"]; ?>" size="4" maxlength="4" />
         </td>
       </tr>
       <tr>
         <td width="35%" align=right>Contest local site number:</td>
         <td width="65%">
-          <input type="text" name="localsite" <?php if(!$main) echo "readonly"; ?> value="<?php echo $ct["contestlocalsite"]; ?>" size="4" maxlength="4" />
+          <input type="text" name="localsite" <?php if (!$main) {
+              echo "readonly";
+          } ?> value="<?php echo $ct["contestlocalsite"]; ?>" size="4" maxlength="4" />
         </td>
+      </tr>
+      <tr>
+          <td width="35%" align=right>Contest PDF: </td>
+          <td width="65%">
+        <input type="file" name="contestPDF" size="40">
+        <?php if (file_exists($contest_path)) {
+            echo "<b><= has been set</b>";
+        } ?>
+          </td>
+      </tr>
+      <tr>
+          <td width="35%" align=right>Delete Contest PDF:</td>
+          <td width="65%">
+        <form action="" method="post">
+            <input type="checkbox" name="deletePDF" value="Yes"> Check this box and submit to delete the PDF.
+        </form>
+          </td>
       </tr>
     </table>
   </center>
   <center>
-<?php if($main) { ?>
+<?php if ($main) { ?>
 	  <input type="submit" name="Submit3" value="Update" onClick="conf()">
 	   <input type="submit" name="Submit3" value="Update Contest and All Sites" onClick="conf2()">
 	   <input type="reset" name="Submit4" value="Clear">

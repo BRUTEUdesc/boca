@@ -18,41 +18,46 @@
 // Last modified 05/aug/2012 by cassio@ime.usp.br
 require 'header.php';
 
-if(($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
-	ForceLoad("../index.php");
-if(($st = DBSiteInfo($_SESSION["usertable"]["contestnumber"],$_SESSION["usertable"]["usersitenumber"])) == null)
-        ForceLoad("../index.php");
-
-if (isset($_GET["delete"]) && is_numeric($_GET["delete"])) {
-   DBBkpDelete($_GET["delete"],$_SESSION["usertable"]["usersitenumber"],$_SESSION["usertable"]["contestnumber"], $_SESSION["usertable"]["usernumber"]);
-   ForceLoad("files.php");
+if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
+    ForceLoad("../index.php");
+}
+if (($st = DBSiteInfo($_SESSION["usertable"]["contestnumber"], $_SESSION["usertable"]["usersitenumber"])) == null) {
+    ForceLoad("../index.php");
 }
 
-if (isset($_FILES["sourcefile"]) && isset($_POST["Submit"]) && $_FILES["sourcefile"]["name"]!="") {
-	if ($_POST["confirmation"] == "confirm") {
-		$type=myhtmlspecialchars($_FILES["sourcefile"]["type"]);
-		$size=myhtmlspecialchars($_FILES["sourcefile"]["size"]);
-		$name=myhtmlspecialchars($_FILES["sourcefile"]["name"]);
-		$temp=myhtmlspecialchars($_FILES["sourcefile"]["tmp_name"]);
+if (isset($_GET["delete"]) && is_numeric($_GET["delete"])) {
+    DBBkpDelete($_GET["delete"], $_SESSION["usertable"]["usersitenumber"], $_SESSION["usertable"]["contestnumber"], $_SESSION["usertable"]["usernumber"]);
+    ForceLoad("files.php");
+}
 
-		if ($size > $ct["contestmaxfilesize"]) {
-	                LOGLevel("User {$_SESSION["usertable"]["username"]} tried to submit file " .
-			"$name with $size bytes ({$ct["contestmaxfilesize"]} max allowed).", 1);
-			MSGError("File size exceeds the limit allowed.");
-			ForceLoad("run.php");
-		}
-		if (!is_uploaded_file($temp) || strlen($name)>100) {
-			IntrusionNotify("file upload problem.");
-			ForceLoad("../index.php");
-		}
+if (isset($_FILES["sourcefile"]) && isset($_POST["Submit"]) && $_FILES["sourcefile"]["name"] != "") {
+    if ($_POST["confirmation"] == "confirm") {
+        $type = myhtmlspecialchars($_FILES["sourcefile"]["type"]);
+        $size = myhtmlspecialchars($_FILES["sourcefile"]["size"]);
+        $name = myhtmlspecialchars($_FILES["sourcefile"]["name"]);
+        $temp = myhtmlspecialchars($_FILES["sourcefile"]["tmp_name"]);
 
-		DBNewBkp ($_SESSION["usertable"]["contestnumber"],
-	                  $_SESSION["usertable"]["usersitenumber"],
-	                  $_SESSION["usertable"]["usernumber"],
-			  $name,
-			  $temp, $size);
-	}
-	ForceLoad("files.php");
+        if ($size > $ct["contestmaxfilesize"]) {
+            LOGLevel("User {$_SESSION["usertable"]["username"]} tried to submit file " .
+            "$name with $size bytes ({$ct["contestmaxfilesize"]} max allowed).", 1);
+            MSGError("File size exceeds the limit allowed.");
+            ForceLoad("run.php");
+        }
+        if (!is_uploaded_file($temp) || strlen($name) > 100) {
+            IntrusionNotify("file upload problem.");
+            ForceLoad("../index.php");
+        }
+
+        DBNewBkp(
+            $_SESSION["usertable"]["contestnumber"],
+            $_SESSION["usertable"]["usersitenumber"],
+            $_SESSION["usertable"]["usernumber"],
+            $name,
+            $temp,
+            $size
+        );
+    }
+    ForceLoad("files.php");
 }
 ?>
 <br>
@@ -63,25 +68,29 @@ if (isset($_FILES["sourcefile"]) && isset($_POST["Submit"]) && $_FILES["sourcefi
   <td><b>File</b></td>
  </tr>
 <?php
-$run = DBUserBkps($_SESSION["usertable"]["contestnumber"],
-		  $_SESSION["usertable"]["usersitenumber"],
-		  $_SESSION["usertable"]["usernumber"]);
+$run = DBUserBkps(
+    $_SESSION["usertable"]["contestnumber"],
+    $_SESSION["usertable"]["usersitenumber"],
+    $_SESSION["usertable"]["usernumber"]
+);
 
-for ($i=0; $i<count($run); $i++) {
-  echo " <tr>\n";
-  echo "  <td nowrap><a href=\"javascript:conf2('files.php?delete=" . $run[$i]["number"] .
-           "')\">" . $run[$i]["number"] . "</a></td>\n";
+for ($i = 0; $i < count($run); $i++) {
+    echo " <tr>\n";
+    echo "  <td nowrap><a href=\"javascript:conf2('files.php?delete=" . $run[$i]["number"] .
+             "')\">" . $run[$i]["number"] . "</a></td>\n";
 
-  echo "  <td nowrap>" . dateconvsimple($run[$i]["timestamp"]) . "</td>\n";
-  echo "<td nowrap><a href=\"../filedownload.php?". filedownload($run[$i]["oid"],$run[$i]["filename"]) . "\">";
-  echo $run[$i]["filename"] . "</a>";
+    echo "  <td nowrap>" . dateconvsimple($run[$i]["timestamp"]) . "</td>\n";
+    echo "<td nowrap><a href=\"../filedownload.php?". filedownload($run[$i]["oid"], $run[$i]["filename"]) . "\">";
+    echo $run[$i]["filename"] . "</a>";
 
-  echo "</td>\n";
-  echo " </tr>\n";
+    echo "</td>\n";
+    echo " </tr>\n";
 
 }
 echo "</table>";
-if (count($run) == 0) echo "<br><center><b><font color=\"#ff0000\">NO BACKUPS AVAILABLE</font></b></center>";
+if (count($run) == 0) {
+    echo "<br><center><b><font color=\"#ff0000\">NO BACKUPS AVAILABLE</font></b></center>";
+}
 
 ?>
 

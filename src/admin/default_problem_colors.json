@@ -1,0 +1,67 @@
+{
+    "1": {
+        "colorname": "Branco",
+        "color": "FFFFFF"
+    },
+    "2": {
+        "colorname": "Preto",
+        "color": "000000"
+    },
+    "3": {
+        "colorname": "Vermelho",
+        "color": "FF0000"
+    },
+    "4": {
+        "colorname": "Dourado",
+        "color": "DAA520"
+    },
+    "5": {
+        "colorname": "Amarelo",
+        "color": "FFFF00"
+    },
+    "6": {
+        "colorname": "Verde",
+        "color": "008000"
+    },
+    "7": {
+        "colorname": "Azul",
+        "color": "0000FF"
+    },
+    "8": {
+        "colorname": "Azul Marinho",
+        "color": "000080"
+    },
+    "9": {
+        "colorname": "Rosa",
+        "color": "FF00FF"
+    },
+    "10": {
+        "colorname": "Roxo",
+        "color": "800080"
+    },
+    "11": {
+        "colorname": "Verde Limão",
+        "color": "00FF00"
+    },
+    "12": {
+        "colorname": "Azul Claro",
+        "color": "00FFFF"
+    },
+    "13": {
+        "colorname": "Prata",
+        "color": "C0C0C0"
+    },
+    "14": {
+        "colorname": "Laranja",
+        "color": "FF8000"
+    },
+    "15": {
+        "colorname": "Marrom",
+        "color": "A3794D"
+    },
+    "16": {
+        "colorname": "Grená",
+        "color": "800000"
+    }
+}
+  

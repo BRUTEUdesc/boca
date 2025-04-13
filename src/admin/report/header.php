@@ -1,4 +1,5 @@
 <?php
+
 ////////////////////////////////////////////////////////////////////////////////
 //BOCA Online Contest Administrator
 //    Copyright (C) 2003-2012 by BOCA Development Team (bocasystem@gmail.com)
@@ -18,10 +19,10 @@
 
 ob_start();
 session_start();
-header ("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
-header ("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
-header ("Cache-Control: no-cache, must-revalidate");
-header ("Pragma: no-cache");
+header("Expires: " . gmdate("D, d M Y H:i:s") . " GMT");
+header("Last-Modified: " . gmdate("D, d M Y H:i:s") . " GMT");
+header("Cache-Control: no-cache, must-revalidate");
+header("Pragma: no-cache");
 //$locr = $_SESSION['locr'];
 //$loc = $_SESSION['loc'];
 $loc = $locr = "../..";
@@ -30,41 +31,42 @@ require_once($locr . "/globals.php");
 require_once($locr."/db.php");
 require_once($locr."/freport.php");
 
-if(isset($_GET['webcastcode']) && ctype_alnum($_GET['webcastcode'])) {
-  header ("Content-transfer-encoding: binary\n");
-  header ("Content-type: application/force-download");
-  ob_end_flush();
+if (isset($_GET['webcastcode']) && ctype_alnum($_GET['webcastcode'])) {
+    header("Content-transfer-encoding: binary\n");
+    header("Content-type: application/force-download");
+    ob_end_flush();
 } else {
-  header ("Content-Type: text/html; charset=utf-8");
-  require $locr.'/version.php';
-  if(!ValidSession()) {
-    InvalidSession($_SERVER['PHP_SELF']);
-    ForceLoad($loc."/index.php");
-  }
-  if($_SESSION["usertable"]["usertype"] != "admin") {
-    IntrusionNotify($_SERVER['PHP_SELF']);
-    ForceLoad($loc."/index.php");
-  }
-  ob_end_flush();
+    header("Content-Type: text/html; charset=utf-8");
+    require $locr.'/version.php';
+    if (!ValidSession()) {
+        InvalidSession($_SERVER['PHP_SELF']);
+        ForceLoad($loc."/index.php");
+    }
+    if ($_SESSION["usertable"]["usertype"] != "admin") {
+        IntrusionNotify($_SERVER['PHP_SELF']);
+        ForceLoad($loc."/index.php");
+    }
+    ob_end_flush();
 
-  echo "<html><head><title>Report Page</title>\n";
-  echo "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n";
+    echo "<html><head><title>Report Page</title>\n";
+    echo "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n";
 
-  echo "<link rel=stylesheet href=\"$loc/Css.php\" type=\"text/css\">\n";
+    echo "<link rel=stylesheet href=\"$loc/Css.php\" type=\"text/css\">\n";
 
-  $contest=$_SESSION["usertable"]["contestnumber"];
-  if(($ct = DBContestInfo($contest)) == null)
-    ForceLoad($loc."/index.php");
-  $site=$_SESSION["usertable"]["usersitenumber"];
-  if(($st = DBSiteInfo($contest,$site)) == null)
-    ForceLoad($loc."/index.php");
-  
-  echo "</head><body><table border=1 width=\"100%\">\n";
-  echo "<tr><td bgcolor=\"eeee00\" nowrap align=center>";
-  echo "<img src=\"$loc/images/smallballoontransp.png\" alt=\"\">";
-  echo "<font color=\"#ffffff\"><a href=\"http://www.ime.usp.br/~cassio/boca/\">BOCA</a></font>";
-  echo "</td><td bgcolor=\"#eeee00\" width=\"99%\">\n";
-  echo $ct["contestname"] . " - " . $st["sitename"] . "</td>\n";
-  echo "</tr></table>\n";
+    $contest = $_SESSION["usertable"]["contestnumber"];
+    if (($ct = DBContestInfo($contest)) == null) {
+        ForceLoad($loc."/index.php");
+    }
+    $site = $_SESSION["usertable"]["usersitenumber"];
+    if (($st = DBSiteInfo($contest, $site)) == null) {
+        ForceLoad($loc."/index.php");
+    }
+
+    echo "</head><body><table border=1 width=\"100%\">\n";
+    echo "<tr><td bgcolor=\"eeee00\" nowrap align=center>";
+    echo "<img src=\"$loc/images/smallballoontransp.png\" alt=\"\">";
+    echo "<font color=\"#ffffff\"><a href=\"http://www.ime.usp.br/~cassio/boca/\">BOCA</a></font>";
+    echo "</td><td bgcolor=\"#eeee00\" width=\"99%\">\n";
+    echo $ct["contestname"] . " - " . $st["sitename"] . "</td>\n";
+    echo "</tr></table>\n";
 }
-?>

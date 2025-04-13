@@ -1,172 +1,169 @@
 <?php
-	/** Libchart - PHP chart library
-	*	
-	* Copyright (C) 2005-2006 Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
-	* 	
-	* This library is free software; you can redistribute it and/or
-	* modify it under the terms of the GNU Lesser General Public
-	* License as published by the Free Software Foundation; either
-	* version 2.1 of the License, or (at your option) any later version.
-	* 
-	* This library is distributed in the hope that it will be useful,
-	* but WITHOUT ANY WARRANTY; without even the implied warranty of
-	* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-	* Lesser General Public License for more details.
-	* 
-	* You should have received a copy of the GNU Lesser General Public
-	* License along with this library; if not, write to the Free Software
-	* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-	* 
-	*/
-	
-	/**
-	* Base bar chart class (horizontal or vertical)
-	*
-	* @author   Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
-	* @abstract
-	*/
 
-	class BarChart extends Chart
-	{
-		/**
-		* Creates a new bar chart
-		*
-		* @access	protected
-    		* @param	integer		width of the image
-    		* @param	integer		height of the image
-		*/
-		
-		function BarChart($width, $height)
-		{
-			parent::Chart($width, $height);
+/** Libchart - PHP chart library
+*
+* Copyright (C) 2005-2006 Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
+*
+* This library is free software; you can redistribute it and/or
+* modify it under the terms of the GNU Lesser General Public
+* License as published by the Free Software Foundation; either
+* version 2.1 of the License, or (at your option) any later version.
+*
+* This library is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+* Lesser General Public License for more details.
+*
+* You should have received a copy of the GNU Lesser General Public
+* License along with this library; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*
+*/
 
-			$this->setMargin(5);
-			$this->setLowerBound(0);
-		}
+/**
+* Base bar chart class (horizontal or vertical)
+*
+* @author   Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
+* @abstract
+*/
 
-		/**
-		* Compute the boundaries on the axis
-		*
-		* @access	protected
-		*/
-		
-		function computeBound()
-		{
-			// Compute lower and upper bound on the value axis
+class BarChart extends Chart
+{
+    /**
+    * Creates a new bar chart
+    *
+    * @access	protected
+        * @param	integer		width of the image
+        * @param	integer		height of the image
+    */
 
-			$point = current($this->point);
-			
-			// Check if some points were defined
-			
-			if(!$point)
-			{
-				$yMin = 0;
-				$yMax = 1;
-			}
-			else
-			{
-				$yMax = $yMin = $point->getY();
-	
-				foreach($this->point as $point)
-				{
-					$y = $point->getY();
-	
-					if($y < $yMin)
-						$yMin = $y;
-	
-					if($y > $yMax)
-						$yMax = $y;
-				}
-			}
+    public function BarChart($width, $height)
+    {
+        parent::Chart($width, $height);
 
-			$this->yMinValue = isset($this->lowerBound) ? $this->lowerBound : $yMin;
-			$this->yMaxValue = isset($this->upperBound) ? $this->upperBound : $yMax;
-			
-			// Compute boundaries on the sample axis
+        $this->setMargin(5);
+        $this->setLowerBound(0);
+    }
 
-			$this->sampleCount = count($this->point);
-		}
+    /**
+    * Compute the boundaries on the axis
+    *
+    * @access	protected
+    */
 
-		/**
-		* Set manually the lower boundary value (overrides the automatic formatting)
-		* Typical usage is to set the bars starting from zero
-		*
-		* @access	public
-		* @param	double		lower boundary value
-		*/
-		
-		function setLowerBound($lowerBound)
-		{
-			$this->lowerBound = $lowerBound;
-		}
+    public function computeBound()
+    {
+        // Compute lower and upper bound on the value axis
 
-		/**
-		* Set manually the upper boundary value (overrides the automatic formatting)
-		*
-		* @access	public
-		* @param	double		upper boundary value
-		*/
-		
-		function setUpperBound($upperBound)
-		{
-			$this->upperBound = $upperBound;
-		}
+        $point = current($this->point);
 
-		/**
-		* Compute the image layout
-		*
-		* @access	protected
-		*/
-		
-		function computeLabelMargin()
-		{
-			$this->axis = new Axis($this->yMinValue, $this->yMaxValue);
-			$this->axis->computeBoundaries();
+        // Check if some points were defined
 
-			$this->graphTLX = $this->margin + $this->labelMarginLeft;
-			$this->graphTLY = $this->margin + $this->labelMarginTop;
-			$this->graphBRX = $this->width - $this->margin - $this->labelMarginRight;
-			$this->graphBRY = $this->height - $this->margin - $this->labelMarginBottom;
-		}
+        if (!$point) {
+            $yMin = 0;
+            $yMax = 1;
+        } else {
+            $yMax = $yMin = $point->getY();
 
-		/**
-		* Create the image
-		*
-		* @access	protected
-		*/
-		
-		function createImage()
-		{
-			parent::createImage();
+            foreach ($this->point as $point) {
+                $y = $point->getY();
 
-			$this->axisColor1 = new Color(201, 201, 201);
-			$this->axisColor2 = new Color(158, 158, 158);
+                if ($y < $yMin) {
+                    $yMin = $y;
+                }
 
-			$this->aquaColor1 = new Color(242, 242, 242);
-			$this->aquaColor2 = new Color(231, 231, 231);
-			$this->aquaColor3 = new Color(239, 239, 239);
-			$this->aquaColor4 = new Color(253, 253, 253);
+                if ($y > $yMax) {
+                    $yMax = $y;
+                }
+            }
+        }
 
-			$this->barColor1 = new Color(42, 71, 181);
-			$this->barColor2 = new Color(33, 56, 143);
+        $this->yMinValue = isset($this->lowerBound) ? $this->lowerBound : $yMin;
+        $this->yMaxValue = isset($this->upperBound) ? $this->upperBound : $yMax;
 
-			$this->barColor3 = new Color(172, 172, 210);
-			$this->barColor4 = new Color(117, 117, 143);
-			
-			// Aqua-like background
+        // Compute boundaries on the sample axis
 
-			$aquaColor = Array($this->aquaColor1, $this->aquaColor2, $this->aquaColor3, $this->aquaColor4);
+        $this->sampleCount = count($this->point);
+    }
 
-			for($i = $this->graphTLY; $i < $this->graphBRY; $i++)
-			{
-				$color = $aquaColor[($i + 3) % 4];
-				$this->primitive->line($this->graphTLX, $i, $this->graphBRX, $i, $color);
-			}
+    /**
+    * Set manually the lower boundary value (overrides the automatic formatting)
+    * Typical usage is to set the bars starting from zero
+    *
+    * @access	public
+    * @param	double		lower boundary value
+    */
 
-			// Axis
+    public function setLowerBound($lowerBound)
+    {
+        $this->lowerBound = $lowerBound;
+    }
 
-			imagerectangle($this->img, $this->graphTLX - 1, $this->graphTLY, $this->graphTLX, $this->graphBRY, $this->axisColor1->getColor($this->img));
-			imagerectangle($this->img, $this->graphTLX - 1, $this->graphBRY, $this->graphBRX, $this->graphBRY + 1, $this->axisColor1->getColor($this->img));
-		}
-	}
-?>
+    /**
+    * Set manually the upper boundary value (overrides the automatic formatting)
+    *
+    * @access	public
+    * @param	double		upper boundary value
+    */
+
+    public function setUpperBound($upperBound)
+    {
+        $this->upperBound = $upperBound;
+    }
+
+    /**
+    * Compute the image layout
+    *
+    * @access	protected
+    */
+
+    public function computeLabelMargin()
+    {
+        $this->axis = new Axis($this->yMinValue, $this->yMaxValue);
+        $this->axis->computeBoundaries();
+
+        $this->graphTLX = $this->margin + $this->labelMarginLeft;
+        $this->graphTLY = $this->margin + $this->labelMarginTop;
+        $this->graphBRX = $this->width - $this->margin - $this->labelMarginRight;
+        $this->graphBRY = $this->height - $this->margin - $this->labelMarginBottom;
+    }
+
+    /**
+    * Create the image
+    *
+    * @access	protected
+    */
+
+    public function createImage()
+    {
+        parent::createImage();
+
+        $this->axisColor1 = new Color(201, 201, 201);
+        $this->axisColor2 = new Color(158, 158, 158);
+
+        $this->aquaColor1 = new Color(242, 242, 242);
+        $this->aquaColor2 = new Color(231, 231, 231);
+        $this->aquaColor3 = new Color(239, 239, 239);
+        $this->aquaColor4 = new Color(253, 253, 253);
+
+        $this->barColor1 = new Color(42, 71, 181);
+        $this->barColor2 = new Color(33, 56, 143);
+
+        $this->barColor3 = new Color(172, 172, 210);
+        $this->barColor4 = new Color(117, 117, 143);
+
+        // Aqua-like background
+
+        $aquaColor = array($this->aquaColor1, $this->aquaColor2, $this->aquaColor3, $this->aquaColor4);
+
+        for ($i = $this->graphTLY; $i < $this->graphBRY; $i++) {
+            $color = $aquaColor[($i + 3) % 4];
+            $this->primitive->line($this->graphTLX, $i, $this->graphBRX, $i, $color);
+        }
+
+        // Axis
+
+        imagerectangle($this->img, $this->graphTLX - 1, $this->graphTLY, $this->graphTLX, $this->graphBRY, $this->axisColor1->getColor($this->img));
+        imagerectangle($this->img, $this->graphTLX - 1, $this->graphBRY, $this->graphBRX, $this->graphBRY + 1, $this->axisColor1->getColor($this->img));
+    }
+}

@@ -19,15 +19,15 @@
 require('header.php');
 
 if (isset($_POST["message"]) && isset($_POST["problem"]) && isset($_POST["Submit"])) {
-	if ($_POST["confirmation"] == "confirm") {
-		$param['contest']=$_SESSION["usertable"]["contestnumber"];
-		$param['site']=$_SESSION["usertable"]["usersitenumber"];
-		$param['user']= $_SESSION["usertable"]["usernumber"];
-		$param['problem'] = htmlspecialchars($_POST["problem"]);
-		$param['question'] = htmlspecialchars($_POST["message"]);
-		DBNewClar($param);
-	}
-	ForceLoad("clar.php");
+    if ($_POST["confirmation"] == "confirm") {
+        $param['contest'] = $_SESSION["usertable"]["contestnumber"];
+        $param['site'] = $_SESSION["usertable"]["usersitenumber"];
+        $param['user'] = $_SESSION["usertable"]["usernumber"];
+        $param['problem'] = htmlspecialchars($_POST["problem"]);
+        $param['question'] = htmlspecialchars($_POST["message"]);
+        DBNewClar($param);
+    }
+    ForceLoad("clar.php");
 }
 ?>
 <br>
@@ -42,43 +42,53 @@ if (isset($_POST["message"]) && isset($_POST["problem"]) && isset($_POST["Submit
  </tr>
 <?php
 
-if(($s = DBSiteInfo($_SESSION["usertable"]["contestnumber"], $_SESSION["usertable"]["usersitenumber"])) == null)
-	ForceLoad("../index.php");
+if (($s = DBSiteInfo($_SESSION["usertable"]["contestnumber"], $_SESSION["usertable"]["usersitenumber"])) == null) {
+    ForceLoad("../index.php");
+}
 
 $clar = DBOpenClarsInSites($_SESSION["usertable"]["contestnumber"], $s["sitejudging"]);
 
-for ($i=0; $i<count($clar); $i++) {
-  echo " <tr>\n";
-  if (strpos($clar[$i]["status"], "answered") === false) // && strpos($_SESSION["usertable"]['username'], "setter") !== false)
-    echo "  <td nowrap><a href=\"claredit.php?clarnumber=".$clar[$i]["number"]."&clarsitenumber=".$clar[$i]["site"] .
-         "\">" . $clar[$i]["number"] . "</td>\n";
-  else
-    echo "  <td nowrap>" . $clar[$i]["number"] . "</td>\n";
-  echo "  <td nowrap>" . $clar[$i]["site"] . "</td>\n";
-  echo "  <td nowrap>" . dateconvminutes($clar[$i]["timestamp"]) . "</td>\n";
-  echo "  <td nowrap>" . $clar[$i]["problem"] . "</td>\n";
-  if ($clar[$i]["judge"] == $_SESSION["usertable"]["usernumber"] &&
-      $clar[$i]["judgesite"] == $_SESSION["usertable"]["usersitenumber"])
-    $color="ff7777";
-  else if ($clar[$i]["status"] == "answering") $color="77ff77";
-  else if ($clar[$i]["status"] == "openclar") $color="ffff88";
-  else $color="ffffff";
+for ($i = 0; $i < count($clar); $i++) {
+    echo " <tr>\n";
+    if (strpos($clar[$i]["status"], "answered") === false) { // && strpos($_SESSION["usertable"]['username'], "setter") !== false)
+        echo "  <td nowrap><a href=\"claredit.php?clarnumber=".$clar[$i]["number"]."&clarsitenumber=".$clar[$i]["site"] .
+             "\">" . $clar[$i]["number"] . "</td>\n";
+    } else {
+        echo "  <td nowrap>" . $clar[$i]["number"] . "</td>\n";
+    }
+    echo "  <td nowrap>" . $clar[$i]["site"] . "</td>\n";
+    echo "  <td nowrap>" . dateconvminutes($clar[$i]["timestamp"]) . "</td>\n";
+    echo "  <td nowrap>" . $clar[$i]["problem"] . "</td>\n";
+    if ($clar[$i]["judge"] == $_SESSION["usertable"]["usernumber"] &&
+        $clar[$i]["judgesite"] == $_SESSION["usertable"]["usersitenumber"]) {
+        $color = "ff7777";
+    } elseif ($clar[$i]["status"] == "answering") {
+        $color = "77ff77";
+    } elseif ($clar[$i]["status"] == "openclar") {
+        $color = "ffff88";
+    } else {
+        $color = "ffffff";
+    }
 
-  echo "  <td nowrap bgcolor=\"#$color\">" . $clar[$i]["status"] . "</td>\n";
- 
-  if ($clar[$i]["question"] == "") $clar[$i]["question"] = "&nbsp;";
+    echo "  <td nowrap bgcolor=\"#$color\">" . $clar[$i]["status"] . "</td>\n";
 
-  echo "  <td>";
-//  echo "<pre>" . $clar[$i]["question"] . "</pre>";
-//  echo $clar[$i]["question"];
-  echo "  <textarea name=\"m$i\" cols=\"60\" rows=\"8\" readonly>". unsanitizeText($clar[$i]["question"]) ."</textarea>\n";
-  echo "</td>\n";
+    if ($clar[$i]["question"] == "") {
+        $clar[$i]["question"] = "&nbsp;";
+    }
 
-  echo " </tr>\n";
+    echo "  <td>";
+    //  echo "<pre>" . $clar[$i]["question"] . "</pre>";
+    //  echo $clar[$i]["question"];
+    echo "  <textarea name=\"m$i\" cols=\"60\" rows=\"8\" readonly>". unsanitizeText($clar[$i]["question"]) ."</textarea>\n";
+    echo "</td>\n";
+
+    echo " </tr>\n";
 }
 
 echo "</table>";
-if (count($clar) == 0) echo "<br><center><b><font color=\"#ff0000\">NO CLARIFICATIONS AVAILABLE</font></b></center>";
+if (count($clar) == 0) {
+    echo "<br><center><b><font color=\"#ff0000\">NO CLARIFICATIONS AVAILABLE</font></b></center>";
+}
 
 ?>
 <br><br><br><center><b>To submit a clarification, just fill in the following fields
@@ -93,8 +103,9 @@ if (count($clar) == 0) echo "<br><center><b><font color=\"#ff0000\">NO CLARIFICA
           <select name="problem">
 <?php
 $prob = DBGetAllProblems($_SESSION["usertable"]["contestnumber"]);
-for ($i=0;$i<count($prob);$i++)
-	echo "<option value=\"" . $prob[$i]["number"] . "\">" . $prob[$i]["problem"] . "</option>\n";
+for ($i = 0;$i < count($prob);$i++) {
+    echo "<option value=\"" . $prob[$i]["number"] . "\">" . $prob[$i]["problem"] . "</option>\n";
+}
 ?>
 	  </select>
         </td>

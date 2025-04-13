@@ -21,38 +21,42 @@
 //			todos os usuarios
 require_once("globals.php");
 
-if(!ValidSession()) { // || $_SESSION["usertable"]["usertype"] == 'team') {
-        InvalidSession("optionlower.php");
-        ForceLoad("index.php");
+if (!ValidSession()) { // || $_SESSION["usertable"]["usertype"] == 'team') {
+    InvalidSession("optionlower.php");
+    ForceLoad("index.php");
 }
 $loc = $_SESSION['loc'];
 
-if (isset($_GET["username"]) && isset($_GET["userfullname"]) && isset($_GET["userdesc"]) && 
+if (isset($_GET["username"]) && isset($_GET["userfullname"]) && isset($_GET["userdesc"]) &&
     isset($_GET["passwordo"]) && isset($_GET["passwordn"])) {
-  if($_SESSION["usertable"]["usertype"] == 'team') {
-    MSGError('Updates are not allowed');
-    ForceLoad("option.php");
-  }    
+    if ($_SESSION["usertable"]["usertype"] == 'team') {
+        MSGError('Updates are not allowed');
+        ForceLoad("option.php");
+    }
 
-	$username = myhtmlspecialchars($_GET["username"]);
-	$userfullname = myhtmlspecialchars($_GET["userfullname"]);
-	$userdesc = myhtmlspecialchars($_GET["userdesc"]);
-	$passwordo = $_GET["passwordo"];
-	$passwordn = $_GET["passwordn"];
-	DBUserUpdate($_SESSION["usertable"]["contestnumber"],
-		     $_SESSION["usertable"]["usersitenumber"],
-		     $_SESSION["usertable"]["usernumber"],
-		     $_SESSION["usertable"]["username"], // $username, but users should not change their names
-		     $userfullname,
-		     $userdesc,
-		     $passwordo,
-		     $passwordn);
-	ForceLoad("option.php");
+    $username = myhtmlspecialchars($_GET["username"]);
+    $userfullname = myhtmlspecialchars($_GET["userfullname"]);
+    $userdesc = myhtmlspecialchars($_GET["userdesc"]);
+    $passwordo = $_GET["passwordo"];
+    $passwordn = $_GET["passwordn"];
+    DBUserUpdate(
+        $_SESSION["usertable"]["contestnumber"],
+        $_SESSION["usertable"]["usersitenumber"],
+        $_SESSION["usertable"]["usernumber"],
+        $_SESSION["usertable"]["username"], // $username, but users should not change their names
+        $userfullname,
+        $userdesc,
+        $passwordo,
+        $passwordn
+    );
+    ForceLoad("option.php");
 }
 
-$a = DBUserInfo($_SESSION["usertable"]["contestnumber"],
-                $_SESSION["usertable"]["usersitenumber"],
-                $_SESSION["usertable"]["usernumber"]);
+$a = DBUserInfo(
+    $_SESSION["usertable"]["contestnumber"],
+    $_SESSION["usertable"]["usersitenumber"],
+    $_SESSION["usertable"]["usernumber"]
+);
 
 ?>
 

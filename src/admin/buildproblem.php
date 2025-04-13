@@ -17,8 +17,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Last modified 31/aug/2012 by cassio@ime.usp.br
 require('header.php');
-if(($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
-	ForceLoad("../index.php");
+if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
+    ForceLoad("../index.php");
+}
 
 ?>
 <br><br><center><b><u>

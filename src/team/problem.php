@@ -18,20 +18,31 @@
 // Last modified 05/aug/2012 by cassio@ime.usp.br
 require('header.php');
 
-if(($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
-	ForceLoad("../index.php");
+if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
+    ForceLoad("../index.php");
+}
 ?>
-<br><b>Information:</b>
+
+<?php
+$prob = DBGetProblems($_SESSION["usertable"]["contestnumber"]);
+$contest_path = "/var/www/boca/src/private/secretcontest/contest.pdf";
+if (count($prob) != 0 && file_exists($contest_path) && is_readable($contest_path)) {
+    echo "<br><b>Contest completo:</b> <a href=\"../downloadcontest.php\">contest.pdf</a>";
+}
+?>
+
 <?php
 /*
+<br><b>Information:</b>
+
 <br>General information: <a href="https://global.naquadah.com.br/boca/info_sheet.pdf">info_sheet.pdf</a>
 
 <br>Timelimits:
-<a href="https://global.naquadah.com.br/boca/contest_times.pdf">contest_times.pdf</a> 
+<a href="https://global.naquadah.com.br/boca/contest_times.pdf">contest_times.pdf</a>
  */
 
-if(is_readable('/var/www/boca/src/sample/secretcontest/maratona.pdf')) {
-?>
+if (is_readable('/var/www/boca/src/sample/secretcontest/maratona.pdf')) {
+    ?>
 <b>PLAIN FILES:</b>  <b>CONTEST</b> (
 <a href='https://global.naquadah.com.br/boca/secretcontest/maratona.pdf'>PT</a> |
 <a href='https://global.naquadah.com.br/boca/secretcontest/maratona_es.pdf'>ES</a> |
@@ -59,26 +70,29 @@ if(is_readable('/var/www/boca/src/sample/secretcontest/maratona.pdf')) {
  </tr>
 <?php
 $prob = DBGetProblems($_SESSION["usertable"]["contestnumber"]);
-for ($i=0; $i<count($prob); $i++) {
-  echo " <tr>\n";
-//  echo "  <td nowrap>" . $prob[$i]["number"] . "</td>\n";
-  echo "  <td nowrap>" . $prob[$i]["problem"];
-  if($prob[$i]["color"] != "")
-          echo " <img alt=\"".$prob[$i]["colorname"]."\" width=\"20\" ".
-			  "src=\"" . balloonurl($prob[$i]["color"]) ."\" />\n";
-  echo "</td>\n";
-  echo "  <td nowrap>" . $prob[$i]["basefilename"] . "&nbsp;</td>\n";
-  echo "  <td nowrap>" . $prob[$i]["fullname"] . "&nbsp;</td>\n";
-  if (isset($prob[$i]["descoid"]) && $prob[$i]["descoid"] != null && isset($prob[$i]["descfilename"])) {
-    echo "  <td nowrap><a href=\"../filedownload.php?" . filedownload($prob[$i]["descoid"], $prob[$i]["descfilename"]) .
-		"\">" . basename($prob[$i]["descfilename"]) . "</a></td>\n";
-  }
-  else
-    echo "  <td nowrap>no description file available</td>\n";
-  echo " </tr>\n";
+for ($i = 0; $i < count($prob); $i++) {
+    echo " <tr>\n";
+    //  echo "  <td nowrap>" . $prob[$i]["number"] . "</td>\n";
+    echo "  <td nowrap>" . $prob[$i]["problem"];
+    if ($prob[$i]["color"] != "") {
+        echo " <img alt=\"".$prob[$i]["colorname"]."\" width=\"20\" ".
+            "src=\"" . balloonurl($prob[$i]["color"]) ."\" />\n";
+    }
+    echo "</td>\n";
+    echo "  <td nowrap>" . $prob[$i]["basefilename"] . "&nbsp;</td>\n";
+    echo "  <td nowrap>" . $prob[$i]["fullname"] . "&nbsp;</td>\n";
+    if (isset($prob[$i]["descoid"]) && $prob[$i]["descoid"] != null && isset($prob[$i]["descfilename"])) {
+        echo "  <td nowrap><a href=\"../filedownload.php?" . filedownload($prob[$i]["descoid"], $prob[$i]["descfilename"]) .
+            "\">" . basename($prob[$i]["descfilename"]) . "</a></td>\n";
+    } else {
+        echo "  <td nowrap>no description file available</td>\n";
+    }
+    echo " </tr>\n";
 }
 echo "</table>";
-if (count($prob) == 0) echo "<br><center><b><font color=\"#ff0000\">NO PROBLEMS AVAILABLE YET</font></b></center>";
+if (count($prob) == 0) {
+    echo "<br><center><b><font color=\"#ff0000\">NO PROBLEMS AVAILABLE YET</font></b></center>";
+}
 
 ?>
 </body>

@@ -1,4 +1,5 @@
 <?php
+
 ////////////////////////////////////////////////////////////////////////////////
 //BOCA Online Contest Administrator
 //    Copyright (C) 2003-2012 by BOCA Development Team (bocasystem@gmail.com)
@@ -19,7 +20,7 @@
 
 require('header.php');
 
-$d = DBRunReport($_SESSION["usertable"]["contestnumber"],$_SESSION["usertable"]["usersitenumber"]);
+$d = DBRunReport($_SESSION["usertable"]["contestnumber"], $_SESSION["usertable"]["usersitenumber"]);
 
 echo "<center><h2>Statistics</h2></center>\n";
 //----------------------------------------------------------
@@ -30,60 +31,63 @@ echo "<tr><td><b><u>Problems</u></b></td>";
 echo "<td>Total</td><td>Accepted</td>";
 echo "</tr>\n";
 
-$str="All Runs by Problem";
-$str2="Accepted Runs by Problem";
+$str = "All Runs by Problem";
+$str2 = "Accepted Runs by Problem";
 $cor = "";
-$color=array();
-$values_ac=array();
+$color = array();
+$values_ac = array();
 // while (list($keya, $val) = each($d['problem'])) {
-foreach($d['problem'] as $keya => $val){
-  $val = $d['problemyes'][$keya]; if($val=="") $val=0; 
-  $str2 .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
-  $cor .= "-" . $d['color'][$keya];
-  $color[] = "#".$d['color'][$keya];
-  $values_ac[]="$keya:$val";
+foreach ($d['problem'] as $keya => $val) {
+    $val = $d['problemyes'][$keya];
+    if ($val == "") {
+        $val = 0;
+    }
+    $str2 .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
+    $cor .= "-" . $d['color'][$keya];
+    $color[] = "#".$d['color'][$keya];
+    $values_ac[] = "$keya:$val";
 }
-$cor = substr($cor,1);
+$cor = substr($cor, 1);
 $values = array();
 
-foreach($d['problem'] as $keya => $val){
-  // while (list($keya, $val) = each($d['problem'])) {
-  $values[] =  $keya . ":" . $val;
-  $str .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
-  echo "<tr><td>$keya ";
-  echo "<img alt=\"balloon\" width=\"15\" ".
-	  "src=\"" . balloonurl($d['color'][$keya]) ."\" />\n";
-  echo "</td>";
-  echo "<td>$val</td>";
-  if(isset($d['problemyes'][$keya])) {
-    echo "<td nowrap>".$d['problemyes'][$keya];
-    if($val != 0) {
-      $p = round(100*$d['problemyes'][$keya] / $val);
-      echo " (".$p."%)";
-    }
+foreach ($d['problem'] as $keya => $val) {
+    // while (list($keya, $val) = each($d['problem'])) {
+    $values[] =  $keya . ":" . $val;
+    $str .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
+    echo "<tr><td>$keya ";
+    echo "<img alt=\"balloon\" width=\"15\" ".
+        "src=\"" . balloonurl($d['color'][$keya]) ."\" />\n";
     echo "</td>";
-  }
-  else
-    echo "<td nowrap>0 (0%)</td>";
-  echo "</tr>";
+    echo "<td>$val</td>";
+    if (isset($d['problemyes'][$keya])) {
+        echo "<td nowrap>".$d['problemyes'][$keya];
+        if ($val != 0) {
+            $p = round(100 * $d['problemyes'][$keya] / $val);
+            echo " (".$p."%)";
+        }
+        echo "</td>";
+    } else {
+        echo "<td nowrap>0 (0%)</td>";
+    }
+    echo "</tr>";
 }
 echo "</table></center>";
 
 $myfile = fopen("runs_by_problems.txt", "w") or die("Unable to open file runs_by_problems.txt!");
-for($i=0;$i<count($values);$i++){
-  fwrite($myfile, $values[$i]);
-  fwrite($myfile, " ");
-  fwrite($myfile, $color[$i]);
-  fwrite($myfile, "\n");
+for ($i = 0;$i < count($values);$i++) {
+    fwrite($myfile, $values[$i]);
+    fwrite($myfile, " ");
+    fwrite($myfile, $color[$i]);
+    fwrite($myfile, "\n");
 }
 fclose($myfile);
 
 $myfile = fopen("accepted_runs_by_problems.txt", "w") or die("Unable to open file accepted_runs_by_problems.txt!");
-for($i=0;$i<count($values_ac);$i++){
-  fwrite($myfile, $values_ac[$i]);
-  fwrite($myfile, " ");
-  fwrite($myfile, $color[$i]);
-  fwrite($myfile, "\n");
+for ($i = 0;$i < count($values_ac);$i++) {
+    fwrite($myfile, $values_ac[$i]);
+    fwrite($myfile, " ");
+    fwrite($myfile, $color[$i]);
+    fwrite($myfile, "\n");
 }
 fclose($myfile);
 
@@ -102,28 +106,28 @@ echo "<center><h3>Runs by Problem and Answer</h3></center>\n";
 echo "<center><table border=1>\n";
 echo "<tr><td><b><u>Problems x Answers</u></b></td>";
 // while (list($key, $val) = each($d['answer']))
-foreach($d['answer'] as $key => $val){
-  echo "<td>$key</td>";
+foreach ($d['answer'] as $key => $val) {
+    echo "<td>$key</td>";
 }
 echo "<td>Total</td></tr>\n";
 
-foreach($d['problem'] as $keya => $vala){
-// while (list($keya, $vala) = each($d['problem'])) {
-  echo "<tr><td>$keya ";
-  echo "<img alt=\"balloon\" width=\"15\" ".
-	  "src=\"" . balloonurl($d['color'][$keya]) ."\" />\n";
-  echo "</td>";
-  // while (list($key, $val) = each($d['answer'])) {
-  foreach($d['answer'] as $key => $val){ 
-    if(!isset($d['pa'][$keya][$key]))
-	echo "<td>0</td>";
-    else {
-        $p = round(100*$d['pa'][$keya][$key] / $vala);
-        echo "<td nowrap>".$d['pa'][$keya][$key]." (".$p."%)</td>";
+foreach ($d['problem'] as $keya => $vala) {
+    // while (list($keya, $vala) = each($d['problem'])) {
+    echo "<tr><td>$keya ";
+    echo "<img alt=\"balloon\" width=\"15\" ".
+        "src=\"" . balloonurl($d['color'][$keya]) ."\" />\n";
+    echo "</td>";
+    // while (list($key, $val) = each($d['answer'])) {
+    foreach ($d['answer'] as $key => $val) {
+        if (!isset($d['pa'][$keya][$key])) {
+            echo "<td>0</td>";
+        } else {
+            $p = round(100 * $d['pa'][$keya][$key] / $vala);
+            echo "<td nowrap>".$d['pa'][$keya][$key]." (".$p."%)</td>";
+        }
     }
-  }
-  echo "<td>$vala</td>";
-  echo "</tr>";
+    echo "<td>$vala</td>";
+    echo "</tr>";
 }
 echo "</table></center>";
 
@@ -133,30 +137,30 @@ echo "<center><table border=1>\n";
 echo "<tr><td><b><u>Problems x Languages</u></b></td>";
 reset($d['language']);
 // while (list($key, $val) = each($d['language']))
-foreach($d['language'] as $key => $val){
-  echo "<td>$key</td>";
+foreach ($d['language'] as $key => $val) {
+    echo "<td>$key</td>";
 }
 echo "<td>Total</td></tr>\n";
 
 reset($d['problem']);
 // while (list($keya, $vala) = each($d['problem'])) {
-foreach($d['problem'] as $keya => $vala){
-  echo "<tr><td>$keya ";
-  echo "<img alt=\"balloon\" width=\"15\" ".
-	  "src=\"" . balloonurl($d['color'][$keya]) ."\" />\n";
-  echo "</td>";
-  reset($d['language']);
-  // while (list($key, $val) = each($d['language'])) {
-  foreach($d['language'] as $key => $val){
-    if(!isset($d['pl'][$keya][$key]))
-	echo "<td>0</td>";
-    else {
-        $p = round(100*$d['pl'][$keya][$key] / $vala);
-        echo "<td nowrap>".$d['pl'][$keya][$key]." (".$p."%)</td>";
+foreach ($d['problem'] as $keya => $vala) {
+    echo "<tr><td>$keya ";
+    echo "<img alt=\"balloon\" width=\"15\" ".
+        "src=\"" . balloonurl($d['color'][$keya]) ."\" />\n";
+    echo "</td>";
+    reset($d['language']);
+    // while (list($key, $val) = each($d['language'])) {
+    foreach ($d['language'] as $key => $val) {
+        if (!isset($d['pl'][$keya][$key])) {
+            echo "<td>0</td>";
+        } else {
+            $p = round(100 * $d['pl'][$keya][$key] / $vala);
+            echo "<td nowrap>".$d['pl'][$keya][$key]." (".$p."%)</td>";
+        }
     }
-  }
-  echo "<td>$vala</td>";
-  echo "</tr>";
+    echo "<td>$vala</td>";
+    echo "</tr>";
 }
 echo "</table></center>";
 
@@ -170,34 +174,35 @@ echo "<tr><td><b><u>Languages</u></b></td>";
 echo "<td>Total</td><td>Accepted</td>";
 echo "</tr>\n";
 
-$str="All Runs by Language";
-$str2="Accepted Runs by Language";
+$str = "All Runs by Language";
+$str2 = "Accepted Runs by Language";
 $values = array();
 $values_ac = array();
 
 // while (list($keya, $val) = each($d['language'])) {
-foreach($d['language'] as $keya => $val){
-  $val=0;
-  if(isset($d['languageyes'][$keya]))
-    $val = $d['languageyes'][$keya];
-  $str2 .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
-  $values_ac[] = $keya.":".$val;
+foreach ($d['language'] as $keya => $val) {
+    $val = 0;
+    if (isset($d['languageyes'][$keya])) {
+        $val = $d['languageyes'][$keya];
+    }
+    $str2 .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
+    $values_ac[] = $keya.":".$val;
 }
 
 reset($d['language']);
 // while (list($keya, $val) = each($d['language'])) {
-foreach($d['language'] as $keya => $val){
-  $str .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
-  $values[] =$keya . ":" . $val;
-  echo "<tr><td>$keya</td>";
-  echo "<td>$val</td>";
-  if(isset($d['languageyes'][$keya])) {
-    $p = round(100*$d['languageyes'][$keya] / $val);
-    echo "<td nowrap>".$d['languageyes'][$keya]." (".$p."%)</td>";
-  }
-  else
-    echo "<td nowrap>0 (0%)</td>";
-  echo "</tr>";
+foreach ($d['language'] as $keya => $val) {
+    $str .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
+    $values[] = $keya . ":" . $val;
+    echo "<tr><td>$keya</td>";
+    echo "<td>$val</td>";
+    if (isset($d['languageyes'][$keya])) {
+        $p = round(100 * $d['languageyes'][$keya] / $val);
+        echo "<td nowrap>".$d['languageyes'][$keya]." (".$p."%)</td>";
+    } else {
+        echo "<td nowrap>0 (0%)</td>";
+    }
+    echo "</tr>";
 }
 echo "</table></center>";
 
@@ -205,25 +210,25 @@ $color = array();
 $color[] = "#2cba00";
 $color[] = "#a3ff00";
 $color[] = "#fff400";
-$color[] = "#ffa700";	
+$color[] = "#ffa700";
 $color[] = "#ff0000";
 
 
 $myfile = fopen("all_runs_by_language.txt", "w") or die("Unable to open file all_runs_by_language.txt!");
-for($i=0;$i<count($values);$i++){
-  fwrite($myfile, $values[$i]);
-  fwrite($myfile, " ");
-  fwrite($myfile, $color[$i]);
-  fwrite($myfile, "\n");
+for ($i = 0;$i < count($values);$i++) {
+    fwrite($myfile, $values[$i]);
+    fwrite($myfile, " ");
+    fwrite($myfile, $color[$i]);
+    fwrite($myfile, "\n");
 }
 fclose($myfile);
 
 $myfile = fopen("accepted_runs_by_language.txt", "w") or die("Unable to open file accepted_runs_by_language.txt!");
-for($i=0;$i<count($values);$i++){
-  fwrite($myfile, $values_ac[$i]);
-  fwrite($myfile, " ");
-  fwrite($myfile, $color[$i]);
-  fwrite($myfile, "\n");
+for ($i = 0;$i < count($values);$i++) {
+    fwrite($myfile, $values_ac[$i]);
+    fwrite($myfile, " ");
+    fwrite($myfile, $color[$i]);
+    fwrite($myfile, "\n");
 }
 
 fclose($myfile);
@@ -244,28 +249,28 @@ echo "<center><table border=1>\n";
 echo "<tr><td><b><u>Languages x Answers</u></b></td>";
 reset($d['answer']);
 // while (list($key, $val) = each($d['answer']))
-foreach($d['answer'] as $key => $val){
-  echo "<td>$key</td>";
+foreach ($d['answer'] as $key => $val) {
+    echo "<td>$key</td>";
 }
 echo "<td>Total</td></tr>\n";
 
 reset($d['language']);
 // while (list($keya, $vala) = each($d['language'])) {
-foreach($d['language'] as $keya => $vala){
+foreach ($d['language'] as $keya => $vala) {
 
-  echo "<tr><td>$keya</td>";
-  reset($d['answer']);
-  // while (list($key, $val) = each($d['answer'])) {
-  foreach($d['answer'] as $key => $val){
-    if(!isset($d['la'][$keya][$key]))
-	echo "<td>0</td>";
-    else {
-        $p = round(100*$d['la'][$keya][$key] / $vala);
-        echo "<td nowrap>".$d['la'][$keya][$key]." (".$p."%)</td>";
+    echo "<tr><td>$keya</td>";
+    reset($d['answer']);
+    // while (list($key, $val) = each($d['answer'])) {
+    foreach ($d['answer'] as $key => $val) {
+        if (!isset($d['la'][$keya][$key])) {
+            echo "<td>0</td>";
+        } else {
+            $p = round(100 * $d['la'][$keya][$key] / $vala);
+            echo "<td nowrap>".$d['la'][$keya][$key]." (".$p."%)</td>";
+        }
     }
-  }
-  echo "<td>$vala</td>";
-  echo "</tr>";
+    echo "<td>$vala</td>";
+    echo "</tr>";
 }
 echo "</table></center>";
 
@@ -283,24 +288,24 @@ echo "<tr><td><b><u>Answers</u></b></td>";
 echo "<td>Answers</td>";
 echo "</tr>\n";
 
-$str="All Runs by Answer";
+$str = "All Runs by Answer";
 $values = array();
 // while (list($keya, $val) = each($d['answer'])) {
-foreach($d['answer'] as $keya => $val){
-  $values[] = $keya . ":" . $val;
-  $str .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
-  echo "<tr><td>$keya</td>";
-  echo "<td>$val</td>";
-  echo "</tr>";
+foreach ($d['answer'] as $keya => $val) {
+    $values[] = $keya . ":" . $val;
+    $str .= chr(1) . $keya . "(" . $val . ")" . chr(1) . $val;
+    echo "<tr><td>$keya</td>";
+    echo "<td>$val</td>";
+    echo "</tr>";
 }
 
 $color[] = "#af7f57";
 $myfile = fopen("all_runs_by_answer.txt", "w") or die("Unable to open file all_runs_by_answer.txt!");
-for($i=0;$i<count($values);$i++){
-  fwrite($myfile, $values[$i]);
-  fwrite($myfile, " ");
-  fwrite($myfile, $color[$i]);
-  fwrite($myfile, "\n");
+for ($i = 0;$i < count($values);$i++) {
+    fwrite($myfile, $values[$i]);
+    fwrite($myfile, " ");
+    fwrite($myfile, $color[$i]);
+    fwrite($myfile, "\n");
 }
 
 fclose($myfile);
@@ -323,56 +328,61 @@ echo "<center><table border=1>\n";
 echo "<tr><td><b><u>Users x Problems</u></b></td>";
 reset($d['problem']);
 // while (list($key, $val) = each($d['problem'])) {
-foreach($d['problem'] as $key => $val){
-  echo "<td>$key ";
-  echo "<img alt=\"balloon\" width=\"15\" ".
-	  "src=\"" . balloonurl($d['color'][$key]) ."\" />\n";
-  echo "</td>";
+foreach ($d['problem'] as $key => $val) {
+    echo "<td>$key ";
+    echo "<img alt=\"balloon\" width=\"15\" ".
+        "src=\"" . balloonurl($d['color'][$key]) ."\" />\n";
+    echo "</td>";
 }
 echo "<td>Total</td><td>Accepted</td></tr>\n";
 
 reset($d['username']);
 // while (list($keya, $vala) = each($d['username'])) {
-foreach($d['username'] as $keya => $vala){
-  $keya = $d['username'][$keya];
-  if(isset($d['user'][$keya]))
-	  $vala = $d['user'][$keya];
-  else $vala=0;
-  echo "<tr><td>".$d['userfull'][$keya]."</td>";
-  reset($d['problem']);
-  // while (list($key, $val) = each($d['problem'])) {
-  foreach($d['problem'] as $key => $val){
-    if(!isset($d['up'][$keya][$key]))
-	echo "<td bgcolor=\"ffff88\">0</td>";
-    else {
-	$q = $d['up'][$keya][$key];
-	$color = "ff5555";
-        if($q < 0) {
-		$q = - $q;
-		$color = "22ee22";
-	}
-        echo "<td nowrap bgcolor=\"$color\">".$q;
-	if($vala != 0) {
-          $p = round(100*$q / $vala);
-          echo " (".$p."%)";
-	}
-	echo "</td>";
+foreach ($d['username'] as $keya => $vala) {
+    $keya = $d['username'][$keya];
+    if (isset($d['user'][$keya])) {
+        $vala = $d['user'][$keya];
+    } else {
+        $vala = 0;
     }
-  }
-  if($vala != "")
-    echo "<td>$vala</td>";
-  else
-    echo "<td>0</td>";
-  if(isset($d['useryes'][$keya])) {
-    if($vala != 0) {
-      $p = round(100*$d['useryes'][$keya] / $vala);
-      echo "<td nowrap>".$d['useryes'][$keya]." (".$p."%)</td>";
-    } else
-      echo "<td>".$d['useryes'][$keya]."</td>";
-  } else
-    echo "<td>0</td>";
+    echo "<tr><td>".$d['userfull'][$keya]."</td>";
+    reset($d['problem']);
+    // while (list($key, $val) = each($d['problem'])) {
+    foreach ($d['problem'] as $key => $val) {
+        if (!isset($d['up'][$keya][$key])) {
+            echo "<td bgcolor=\"ffff88\">0</td>";
+        } else {
+            $q = $d['up'][$keya][$key];
+            $color = "ff5555";
+            if ($q < 0) {
+                $q = - $q;
+                $color = "22ee22";
+            }
+            echo "<td nowrap bgcolor=\"$color\">".$q;
+            if ($vala != 0) {
+                $p = round(100 * $q / $vala);
+                echo " (".$p."%)";
+            }
+            echo "</td>";
+        }
+    }
+    if ($vala != "") {
+        echo "<td>$vala</td>";
+    } else {
+        echo "<td>0</td>";
+    }
+    if (isset($d['useryes'][$keya])) {
+        if ($vala != 0) {
+            $p = round(100 * $d['useryes'][$keya] / $vala);
+            echo "<td nowrap>".$d['useryes'][$keya]." (".$p."%)</td>";
+        } else {
+            echo "<td>".$d['useryes'][$keya]."</td>";
+        }
+    } else {
+        echo "<td>0</td>";
+    }
 
-  echo "</tr>";
+    echo "</tr>";
 }
 echo "</table></center>";
 
@@ -382,7 +392,7 @@ echo "<hr />";
 echo "<center><h3>Runs by Time Period</h3></center>\n";
 
 $vezes = 30;
-$passo = $st['siteduration']/$vezes;
+$passo = $st['siteduration'] / $vezes;
 $atual = 0;
 $pos = 0;
 $res = array();
@@ -390,33 +400,39 @@ $m = 0;
 sort($d['timestamp']);
 reset($d['timestamp']);
 // while (list($keya, $val) = each($d['timestamp'])) {
-foreach($d['timestamp'] as $keya => $val){
-  while($atual+$passo < $val) {
-    $atual += $passo;
-    $pos++;
-  }
-  if(isset($res[$pos]))
-	  $res[$pos]++;
-  else $res[$pos]=1;
-  if($res[$pos] > $m) $m=$res[$pos];
+foreach ($d['timestamp'] as $keya => $val) {
+    while ($atual + $passo < $val) {
+        $atual += $passo;
+        $pos++;
+    }
+    if (isset($res[$pos])) {
+        $res[$pos]++;
+    } else {
+        $res[$pos] = 1;
+    }
+    if ($res[$pos] > $m) {
+        $m = $res[$pos];
+    }
 }
 
-$str="Runs by Time Period" . chr(1) . $m;
-$atual=0;
+$str = "Runs by Time Period" . chr(1) . $m;
+$atual = 0;
 $values = array();
-for($pos=0; $pos<$vezes; $pos++) {
-  if(!isset($res[$pos]) || $res[$pos]=="") $res[$pos] = 0;
-  $q = (int) ($atual/60);
-  $atual += $passo;
-  $qq = (int) ($atual/60);
-  $str .= chr(1) . $q . "-" .$qq . chr(1) . $res[$pos];
-  $values[] = $res[$pos];
+for ($pos = 0; $pos < $vezes; $pos++) {
+    if (!isset($res[$pos]) || $res[$pos] == "") {
+        $res[$pos] = 0;
+    }
+    $q = (int) ($atual / 60);
+    $atual += $passo;
+    $qq = (int) ($atual / 60);
+    $str .= chr(1) . $q . "-" .$qq . chr(1) . $res[$pos];
+    $values[] = $res[$pos];
 }
 
 $myfile = fopen("runs_by_time_period.txt", "w") or die("Unable to open file runs_by_time_period.txt!");
-for($i=0;$i<count($values);$i++){
-  fwrite($myfile, $values[$i]);
-  fwrite($myfile, "\n");
+for ($i = 0;$i < count($values);$i++) {
+    fwrite($myfile, $values[$i]);
+    fwrite($myfile, "\n");
 }
 
 shell_exec("python3 ../../admin/report/barplot.py runs_by_time_period.txt 'Runs by Time Period'");
@@ -427,39 +443,43 @@ echo "<center><img alt=runs_by_time_period src=runs_by_time_period.png width=500
 
 //------------------------------------------------
 $vezes = 30;
-$passo = $st['siteduration']/$vezes;
+$passo = $st['siteduration'] / $vezes;
 $atual = 0;
 $pos = 0;
 $res = array();
 sort($d['timestampyes']);
 reset($d['timestampyes']);
 // while (list($keya, $val) = each($d['timestampyes'])) {
-foreach($d['timestampyes'] as $keya => $val){
-  while($atual+$passo < $val) {
-    $atual += $passo;
-    $pos++;
-  }
-  if(isset($res[$pos]))
-	  $res[$pos]++;
-  else $res[$pos]=1;
+foreach ($d['timestampyes'] as $keya => $val) {
+    while ($atual + $passo < $val) {
+        $atual += $passo;
+        $pos++;
+    }
+    if (isset($res[$pos])) {
+        $res[$pos]++;
+    } else {
+        $res[$pos] = 1;
+    }
 }
 
 $values_ac = array();
-$str="Accepted Runs by Time Period" . chr(1) . $m;
-$atual=0;
-for($pos=0; $pos<$vezes; $pos++) {
-  if(!isset($res[$pos]) || $res[$pos]=="") $res[$pos] = 0;
-  $q = (int) ($atual/60);
-  $atual += $passo;
-  $qq = (int) ($atual/60);
-  $str .= chr(1) . $q . "-" .$qq . chr(1) . $res[$pos];
-  $values_ac[] = $res[$pos];
+$str = "Accepted Runs by Time Period" . chr(1) . $m;
+$atual = 0;
+for ($pos = 0; $pos < $vezes; $pos++) {
+    if (!isset($res[$pos]) || $res[$pos] == "") {
+        $res[$pos] = 0;
+    }
+    $q = (int) ($atual / 60);
+    $atual += $passo;
+    $qq = (int) ($atual / 60);
+    $str .= chr(1) . $q . "-" .$qq . chr(1) . $res[$pos];
+    $values_ac[] = $res[$pos];
 }
 
 $myfile = fopen("accepted_runs_by_time_period.txt", "w") or die("Unable to open file accepted_runs_by_time_period.txt!");
-for($i=0;$i<count($values_ac);$i++){
-  fwrite($myfile, $values_ac[$i]);
-  fwrite($myfile, "\n");
+for ($i = 0;$i < count($values_ac);$i++) {
+    fwrite($myfile, $values_ac[$i]);
+    fwrite($myfile, "\n");
 }
 
 shell_exec("python3 ../../admin/report/barplot.py accepted_runs_by_time_period.txt 'Accepted Runs by Time Period'");
@@ -469,4 +489,3 @@ echo "<center><img alt=runs_by_time_period src=accepted_runs_by_time_period.png 
 
 
 include("$locr/footnote.php");
-?>

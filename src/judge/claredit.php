@@ -18,61 +18,84 @@
 // Last modified 05/aug/2012 by cassio@ime.usp.br
 require('header.php');
 
-if (isset($_POST["answer"]) && isset($_POST["giveup"]) && $_POST["giveup"]=="Cancel" &&
+if (isset($_POST["answer"]) && isset($_POST["giveup"]) && $_POST["giveup"] == "Cancel" &&
     isset($_POST["sitenumber"]) && isset($_POST["number"]) && is_numeric($_POST["number"]) &&
     is_numeric($_POST["sitenumber"])) {
 
+    $sitenumber = myhtmlspecialchars($_POST["sitenumber"]);
+    $number = myhtmlspecialchars($_POST["number"]);
+
+    DBClarGiveUp(
+        $number,
+        $sitenumber,
+        $_SESSION["usertable"]["contestnumber"],
+        $_SESSION["usertable"]["usernumber"],
+        $_SESSION["usertable"]["usersitenumber"]
+    );
+    MSGError("Clarification returned.");
+    ForceLoad("clar.php");
+}
+
+if (isset($_POST["answer"]) && isset($_POST["Submit"]) && ($_POST["Submit"] == "Answer" || $_POST["Submit"] == "No response") &&
+    is_numeric($_POST["number"]) && isset($_POST["sitenumber"]) && isset($_POST["number"]) && is_numeric($_POST["sitenumber"])) {
+    if ($_POST["confirmation"] == "confirm") {
+
+        $ans = myhtmlspecialchars($_POST["answer"]);
         $sitenumber = myhtmlspecialchars($_POST["sitenumber"]);
         $number = myhtmlspecialchars($_POST["number"]);
 
-	DBClarGiveUp($number, $sitenumber, $_SESSION["usertable"]["contestnumber"], 
-			$_SESSION["usertable"]["usernumber"], $_SESSION["usertable"]["usersitenumber"]);
-	MSGError("Clarification returned.");
-	ForceLoad("clar.php");
+        if ($_POST["Submit"] == "No response") {
+            $ans = 'No response. '.$ans;
+        }
+
+        if (trim($ans) == "") {
+            DBClarGiveUp(
+                $number,
+                $sitenumber,
+                $_SESSION["usertable"]["contestnumber"],
+                $_SESSION["usertable"]["usernumber"],
+                $_SESSION["usertable"]["usersitenumber"]
+            );
+            MSGError("Clarification returned.");
+        } else {
+            if (isset($_POST["answerall"])) {
+                $type = 'all';
+            } elseif (isset($_POST["answersite"])) {
+                $type = 'site';
+            } else {
+                $type = 'none';
+            }
+
+            DBUpdateClar(
+                $_SESSION["usertable"]["contestnumber"],
+                $_SESSION["usertable"]["usersitenumber"],
+                $_SESSION["usertable"]["usernumber"],
+                $sitenumber,
+                $number,
+                $ans,
+                $type
+            );
+        }
+    }
+    ForceLoad("clar.php");
 }
 
-if (isset($_POST["answer"]) && isset($_POST["Submit"]) && ($_POST["Submit"]=="Answer" || $_POST["Submit"]=="No response") && 
-    is_numeric($_POST["number"]) && isset($_POST["sitenumber"]) && isset($_POST["number"]) && is_numeric($_POST["sitenumber"])) {
-	if ($_POST["confirmation"]=="confirm") {
-
-	        $ans = myhtmlspecialchars($_POST["answer"]);
-	        $sitenumber = myhtmlspecialchars($_POST["sitenumber"]);
-	        $number = myhtmlspecialchars($_POST["number"]);
-
-		if ($_POST["Submit"]=="No response")
-			$ans='No response. '.$ans;
-
-		if (trim($ans)=="") {
-			DBClarGiveUp($number, $sitenumber, $_SESSION["usertable"]["contestnumber"], 
-				$_SESSION["usertable"]["usernumber"], $_SESSION["usertable"]["usersitenumber"]);
-			MSGError("Clarification returned.");
-		} else {
-			if (isset($_POST["answerall"])) $type='all';
-			else if (isset($_POST["answersite"])) $type='site';
-			else $type = 'none';
-
-	        	DBUpdateClar($_SESSION["usertable"]["contestnumber"],
-	                     $_SESSION["usertable"]["usersitenumber"],
-	                     $_SESSION["usertable"]["usernumber"],
-	                     $sitenumber, $number, $ans, $type);
-		}
-	}
-        ForceLoad("clar.php");
-}
-
-if (!isset($_GET["clarnumber"]) || !isset($_GET["clarsitenumber"]) || 
+if (!isset($_GET["clarnumber"]) || !isset($_GET["clarsitenumber"]) ||
     !is_numeric($_GET["clarnumber"]) || !is_numeric($_GET["clarsitenumber"])) {
-	IntrusionNotify("tried to open the judge/claredit.php with wrong parameters.");
-	ForceLoad("clar.php");
+    IntrusionNotify("tried to open the judge/claredit.php with wrong parameters.");
+    ForceLoad("clar.php");
 }
 
 $clarsitenumber = myhtmlspecialchars($_GET["clarsitenumber"]);
 $clarnumber = myhtmlspecialchars($_GET["clarnumber"]);
 
-if (($a = DBGetClarToAnswer($clarnumber, $clarsitenumber, 
-		$_SESSION["usertable"]["contestnumber"])) === false) {
-	MSGError("Another judge got it first.");
-	ForceLoad("clar.php");
+if (($a = DBGetClarToAnswer(
+    $clarnumber,
+    $clarsitenumber,
+    $_SESSION["usertable"]["contestnumber"]
+)) === false) {
+    MSGError("Another judge got it first.");
+    ForceLoad("clar.php");
 }
 
 ?>

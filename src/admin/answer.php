@@ -19,28 +19,29 @@
 
 require('header.php');
 
-if(($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
-	ForceLoad("$loc/index.php");
+if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
+    ForceLoad("$loc/index.php");
+}
 
 if (isset($_GET["delete"]) && is_numeric($_GET["delete"])) {
-	$param["number"] = $_GET["delete"];
-	if(!DBDeleteAnswer($_SESSION["usertable"]["contestnumber"], $param)) {
-		MSGError('Error deleting answer');
-		LogError('Error deleting answer');
-	}
-	ForceLoad("answer.php");
+    $param["number"] = $_GET["delete"];
+    if (!DBDeleteAnswer($_SESSION["usertable"]["contestnumber"], $param)) {
+        MSGError('Error deleting answer');
+        LogError('Error deleting answer');
+    }
+    ForceLoad("answer.php");
 }
 
 if (isset($_POST["Submit3"]) && isset($_POST["answernumber"]) && is_numeric($_POST["answernumber"]) && isset($_POST["answername"]) &&
     $_POST["answername"] != "" && isset($_POST["answeryes"])) {
-	if ($_POST["confirmation"] == "confirm") {
-		$param["number"] = $_POST["answernumber"];
-		$param["name"] = $_POST["answername"];
-		$param["yes"] = $_POST["answeryes"];
-		$param["short"] = $_POST["answershort"];
-		DBNewAnswer ($_SESSION["usertable"]["contestnumber"],$param);
-	}
-	ForceLoad("answer.php");
+    if ($_POST["confirmation"] == "confirm") {
+        $param["number"] = $_POST["answernumber"];
+        $param["name"] = $_POST["answername"];
+        $param["yes"] = $_POST["answeryes"];
+        $param["short"] = $_POST["answershort"];
+        DBNewAnswer($_SESSION["usertable"]["contestnumber"], $param);
+    }
+    ForceLoad("answer.php");
 }
 ?>
 <br>
@@ -71,31 +72,40 @@ if (isset($_POST["Submit3"]) && isset($_POST["answernumber"]) && is_numeric($_PO
  </tr>
 <?php
 $ans = DBGetAnswers($_SESSION["usertable"]["contestnumber"]);
-$n=0;
-for ($i=0; $i<count($ans); $i++) {
+$n = 0;
+for ($i = 0; $i < count($ans); $i++) {
     echo " <tr>\n";
-    if($ans[$i]["fake"]!="t") {
-		if($ans[$i]["number"]>7) {
-      echo "  <td nowrap><a href=\"javascript:conf2('answer.php?delete=" . $ans[$i]["number"] . 
-	   "')\">" . $ans[$i]["number"] . "</a></td>\n";
-		} else 
-			echo "  <td nowrap>".$ans[$i]["number"]."</td>\n";
+    if ($ans[$i]["fake"] != "t") {
+        if ($ans[$i]["number"] > 7) {
+            echo "  <td nowrap><a href=\"javascript:conf2('answer.php?delete=" . $ans[$i]["number"] .
+             "')\">" . $ans[$i]["number"] . "</a></td>\n";
+        } else {
+            echo "  <td nowrap>".$ans[$i]["number"]."</td>\n";
+        }
     } else {
-      echo "  <td nowrap>".$ans[$i]["number"]." (fake)</td>\n";
+        echo "  <td nowrap>".$ans[$i]["number"]." (fake)</td>\n";
     }
     echo " <td nowrap>" . $ans[$i]["desc"] . "</td>\n";
-    
-    if ($ans[$i]["short"]=="") echo "  <td nowrap>&lt;EMPTY&gt;</td>\n";
-    else echo "  <td nowrap>".$ans[$i]["short"]."</td>\n";
-    
-    if($ans[$i]["yes"]=="t") echo "  <td nowrap>Yes</td>\n";
-    else echo "  <td nowrap>No</td>\n";
-    
+
+    if ($ans[$i]["short"] == "") {
+        echo "  <td nowrap>&lt;EMPTY&gt;</td>\n";
+    } else {
+        echo "  <td nowrap>".$ans[$i]["short"]."</td>\n";
+    }
+
+    if ($ans[$i]["yes"] == "t") {
+        echo "  <td nowrap>Yes</td>\n";
+    } else {
+        echo "  <td nowrap>No</td>\n";
+    }
+
     echo " </tr>\n";
     $n++;
 }
 echo "</table>";
-if ($n == 0) echo "<br><center><b><font color=\"#ff0000\">NO ANSWERS DEFINED</font></b></center>";
+if ($n == 0) {
+    echo "<br><center><b><font color=\"#ff0000\">NO ANSWERS DEFINED</font></b></center>";
+}
 ?>
 
 <br><br><center><b>When allowed, clicking on the answer number will delete it.<br>

@@ -18,25 +18,36 @@
 // Last modified 05/aug/2012 by cassio@ime.usp.br
 require_once("globals.php");
 
-if(!ValidSession()) {
-        InvalidSession("scorelower.php");
-        ForceLoad("index.php");
+if (!ValidSession()) {
+    InvalidSession("scorelower.php");
+    ForceLoad("index.php");
 }
 
-if (($s = DBSiteInfo($_SESSION["usertable"]["contestnumber"],$_SESSION["usertable"]["usersitenumber"])) == null)
-  ForceLoad("../index.php");
+if (($s = DBSiteInfo($_SESSION["usertable"]["contestnumber"], $_SESSION["usertable"]["usersitenumber"])) == null) {
+    ForceLoad("../index.php");
+}
 
-if ($_SESSION["usertable"]["usertype"]!="judge" && 
-    $_SESSION["usertable"]["usertype"]!="admin") $ver=true;
-else $ver=false;
+if ($_SESSION["usertable"]["usertype"] != "judge" &&
+    $_SESSION["usertable"]["usertype"] != "admin") {
+    $ver = true;
+} else {
+    $ver = false;
+}
 
 //if($_SESSION["usertable"]["usertype"]=='staff' && $_SESSION["usertable"]["usernumber"] >= 200000) $ver=false;
-if($_SESSION["usertable"]["usertype"]=='staff') $ver=false;
+if ($_SESSION["usertable"]["usertype"] == 'staff') {
+    $ver = false;
+}
 
-if($_SESSION["usertable"]["usertype"]=="score") $des=false;
-else $des=true;
+if ($_SESSION["usertable"]["usertype"] == "score") {
+    $des = false;
+} else {
+    $des = true;
+}
 
-if($_SESSION["usertable"]["usertype"]=="score" && substr($_SESSION["usertable"]["username"],0,9) == "scoreboss" ) $ver=false;
+if ($_SESSION["usertable"]["usertype"] == "score" && substr($_SESSION["usertable"]["username"], 0, 9) == "scoreboss") {
+    $ver = false;
+}
 
 
 // temp do carlinhos (placar de judge == placar de time)
