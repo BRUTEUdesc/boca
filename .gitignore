@@ -18,6 +18,7 @@ src/admin/report/*.txt
 # Gráficos do Autojudge
 src/private/agentcode/
 src/private/webcast.*
+!src/private/webcast.sep
 src/private/scoretmp/
 src/private/runtmp/
 src/private/runslog/
