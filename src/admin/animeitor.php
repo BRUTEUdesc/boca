@@ -17,12 +17,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 require('header.php');
 
-if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
+if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
     ForceLoad("../index.php");
+}
 
 $webcastPhpPath = __DIR__ . '/report/webcast.php';
 
-function getCurrentContest() {
+function getCurrentContest()
+{
     global $webcastPhpPath;
     $content = @file_get_contents($webcastPhpPath);
     if ($content !== false) {
@@ -33,7 +35,8 @@ function getCurrentContest() {
     return 1;
 }
 
-function getAnimeitorStatus() {
+function getAnimeitorStatus()
+{
     $output = shell_exec("sudo /usr/local/bin/check-animeitor-status 2>&1");
     if (trim($output) === 'true') {
         return array('status' => 'Running', 'color' => 'green');
@@ -61,7 +64,7 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "animeitor_confirm") {
     $cmd = $_POST["command"];
     if ($cmd == "start" || $cmd == "stop" || $cmd == "restart") {
         $output = shell_exec("sudo /usr/local/bin/animeitor-wrapper.sh $cmd 2>&1");
-        
+
         if ($output !== null) {
             LogLevel("Command executed successfully: $cmd", 1);
         } else {
@@ -108,10 +111,10 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "animeitor_confirm") {
       <tr>
         <td width="35%" align=right>Animeitor Status&nbsp;:</td>
         <td width="65%">
-          <?php 
+          <?php
           $status = getAnimeitorStatus();
-          echo '<span style="color: ' . $status['color'] . '">●</span> ' . $status['status'];
-          ?>
+echo '<span style="color: ' . $status['color'] . '">●</span> ' . $status['status'];
+?>
         </td>
       </tr>
       <tr>

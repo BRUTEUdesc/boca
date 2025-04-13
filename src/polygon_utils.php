@@ -28,8 +28,8 @@ function convert_polygon_to_boca($inputfilepath, $letter)
     $command_copy_zip = "cp $inputArg $tempZip";
     shell_exec($command_copy_zip);
 
-	$JAVA_TL_FACTOR = 3;
-	$PYTHON_TL_FACTOR = 3;
+    $JAVA_TL_FACTOR = 3;
+    $PYTHON_TL_FACTOR = 3;
 
     $command = "cd $baseDir && python3 make_from_full_package.py $letterArg $tempZip $JAVA_TL_FACTOR $PYTHON_TL_FACTOR > " . $logFile . " 2>&1";
     shell_exec($command);
