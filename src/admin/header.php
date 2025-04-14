@@ -88,6 +88,7 @@ if (!isset($_POST['noflush'])) {
     echo "  <td align=center><a class=menu style=\"font-weight:bold\" href=report.php>Reports</a></td>\n";
     echo "  <td align=center><a class=menu style=\"font-weight:bold\" href=files.php>Backups</a></td>\n";
     echo "  <td align=center><a class=menu style=\"font-weight:bold\" href=option.php>Options</a></td>\n";
+    echo "  <td align=center><a class=menu style=\"font-weight:bold\" href=scores.php>Scores Config</a></td>\n";
     echo "  <td align=center><a class=menu style=\"font-weight:bold\" href=$loc/index.php>Logout</a></td>\n";
     echo " </tr>\n";
     echo "</table>\n";
