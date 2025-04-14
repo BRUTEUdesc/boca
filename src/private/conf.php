@@ -18,6 +18,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Last modified 05/aug/2012 by cassio@ime.usp.br
 
+require_once '/var/www/boca/vendor/autoload.php';
+Dotenv\Dotenv::createImmutable('/var/www/boca')->load();
+
 function globalconf()
 {
     $conf["dbencoding"] = "UTF8";
@@ -31,10 +34,10 @@ function globalconf()
     $conf["dbname"] = "bocadb"; // name of the boca database
 
     $conf["dbuser"] = "bocauser"; // unprivileged boca user
-    $conf["dbpass"] = "clluromar";
+    $conf["dbpass"] = $_ENV["BOCA_DB_PASS"] ?? null;
 
     $conf["dbsuperuser"] = "bocauser"; // privileged boca user
-    $conf["dbsuperpass"] = "clluromar";
+    $conf["dbsuperpass"] = $_ENV["BOCA_DB_SUPERPASS"] ?? null;
 
     // note that it is fine to use the same user
 
@@ -45,12 +48,11 @@ function globalconf()
     // eventually created come already with the password set to this
     // value. It is your task later to update these passwords to
     // some other values within the BOCA web interface.
-    $conf["basepass"] = "boca";
+    $conf["basepass"] = $_ENV["BOCA_BASE_PASS"] ?? null;
 
     // secret key to be used in HTTP headers
     // you MUST set it with any random large enough sequence
-    $conf["key"] = "q7sFID0N17ALdxPPTS9E";
-
+    $conf["key"] = $_ENV["BOCA_KEY"] ?? null;
 
     // the following field is used by the autojudging script
     // set it with the ip of the computer running the script

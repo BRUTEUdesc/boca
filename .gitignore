@@ -42,3 +42,12 @@ src/private/secretcontest/*.pdf
 tools/
 debian/
 
+# Ignorar dependências instaladas com Composer
+/vendor/
+
+# Ignorar arquivos de controle do Composer
+composer.lock
+composer.json
+
+# Ignorar .env
+.env
