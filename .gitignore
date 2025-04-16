@@ -15,7 +15,7 @@
 src/admin/report/*.png
 src/admin/report/*.txt
 
-# Gráficos do Autojudge
+# Arquivos inúteis
 src/private/agentcode/
 src/private/webcast.*
 !src/private/webcast.sep
@@ -23,6 +23,8 @@ src/private/scoretmp/
 src/private/problemtmp/
 src/private/runtmp/
 src/private/runslog/
+src/autojudgeip/ip_aj1
+src/autojudgeip/ip_aj2
 
 # Balões personalizados (só se não quiser versionar)
 src/balloons/
