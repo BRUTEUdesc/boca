@@ -20,6 +20,7 @@ src/private/agentcode/
 src/private/webcast.*
 !src/private/webcast.sep
 src/private/scoretmp/
+src/private/problemtmp/
 src/private/runtmp/
 src/private/runslog/
 

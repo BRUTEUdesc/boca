@@ -29,6 +29,8 @@ if (isset($_POST["confirmation"]) && $_POST["confirmation"] == "confirm") {
     } else {
         MSGError("One or both files were not updated");
     }
+
+    ForceLoad("scores.php");
 }
 
 ?>

@@ -74,6 +74,16 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "animeitor_confirm") {
     ForceLoad("animeitor.php");
 }
 
+if (isset($_POST["command"]) && $_POST["confirmation"] == "clean_confirm") {
+    $output = shell_exec("sudo /usr/local/bin/clean-webcast-cache.sh 2>&1");
+    if ($output !== null) {
+        LogLevel("Webcast cache cleaned successfully", 1);
+    } else {
+        LogLevel("Webcast cache cleaning failed", 1);
+    }
+    ForceLoad("animeitor.php");
+}
+
 ?>
 
 <br>
@@ -95,6 +105,11 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "animeitor_confirm") {
     function conf2() {
       if (confirm("Confirm?")) {
         document.form1.confirmation.value='animeitor_confirm';
+      }
+    }
+    function conf3() {
+      if (confirm("Confirm?")) {
+        document.form1.confirmation.value='clean_confirm';
       }
     }
   </script>
@@ -130,6 +145,12 @@ echo '<span style="color: ' . $status['color'] . '">●</span> ' . $status['stat
           <input type="submit" name="command" value="start" onClick="conf2()">
           <input type="submit" name="command" value="stop" onClick="conf2()">
           <input type="submit" name="command" value="restart" onClick="conf2()">
+        </td>
+      </tr>
+      <tr>
+        <td width="35%" align=right>Clean Webcast Cache&nbsp;:</td>
+        <td width="65%">
+          <input type="submit" name="command" value="clean" onClick="conf3()">
         </td>
       </tr>
     </table>
