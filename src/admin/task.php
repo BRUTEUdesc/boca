@@ -102,6 +102,13 @@ if (trim($s["sitetasking"]) != "") {
 }
 
 $task = DBAllTasksInSites($_SESSION["usertable"]["contestnumber"], $s["sitetasking"], $order, true);
+$filtered_tasks = array();
+for ($i = 0; $i < count($task); $i++) {
+    if (strpos($task[$i]["username"], "teamext") !== 0) {
+        $filtered_tasks[] = $task[$i];
+    }
+}
+$task = $filtered_tasks;
 for ($i = 0; $i < count($task); $i++) {
     $st = $task[$i]["status"];
 

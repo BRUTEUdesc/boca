@@ -35,16 +35,6 @@ function getCurrentContest()
     return 1;
 }
 
-function getAnimeitorStatus()
-{
-    $output = shell_exec("sudo /usr/local/bin/check-animeitor-status 2>&1");
-    if (trim($output) === 'true') {
-        return array('status' => 'Running', 'color' => 'green');
-    } else {
-        return array('status' => 'Stopped', 'color' => 'red');
-    }
-}
-
 if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && $_POST["confirmation"] == "contest_confirm") {
     $content = @file_get_contents($webcastPhpPath);
     if ($content !== false) {
@@ -63,24 +53,15 @@ if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && $_POST["confirmat
 if (isset($_POST["command"]) && $_POST["confirmation"] == "animeitor_confirm") {
     $cmd = $_POST["command"];
     if ($cmd == "start" || $cmd == "stop" || $cmd == "restart") {
-        $output = shell_exec("sudo /usr/local/bin/animeitor-wrapper.sh $cmd 2>&1");
-
-        if ($output !== null) {
-            LogLevel("Command executed successfully: $cmd", 1);
-        } else {
-            LogLevel("Command failed: $cmd (Output: " . ($output ?? "null") . ")", 1);
-        }
+        shell_exec("sudo /usr/local/bin/animeitor-wrapper.sh $cmd > /dev/null 2>&1 &");
+        LogLevel("Command dispatched: $cmd", 1);
     }
     ForceLoad("animeitor.php");
 }
 
 if (isset($_POST["command"]) && $_POST["confirmation"] == "clean_confirm") {
-    $output = shell_exec("sudo /usr/local/bin/clean-webcast-cache.sh 2>&1");
-    if ($output !== null) {
-        LogLevel("Webcast cache cleaned successfully", 1);
-    } else {
-        LogLevel("Webcast cache cleaning failed", 1);
-    }
+    shell_exec("sudo /usr/local/bin/clean-webcast-cache.sh > /dev/null 2>&1 &");
+    LogLevel("Webcast cache clean dispatched", 1);
     ForceLoad("animeitor.php");
 }
 
@@ -126,10 +107,7 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "clean_confirm") {
       <tr>
         <td width="35%" align=right>Animeitor Status&nbsp;:</td>
         <td width="65%">
-          <?php
-          $status = getAnimeitorStatus();
-echo '<span style="color: ' . $status['color'] . '">●</span> ' . $status['status'];
-?>
+          <span id="animeitorStatus">Loading...</span>
         </td>
       </tr>
       <tr>
@@ -156,6 +134,26 @@ echo '<span style="color: ' . $status['color'] . '">●</span> ' . $status['stat
     </table>
   </center>
 </form>
+
+<script>
+  function updateAnimeitorStatus() {
+    fetch('animeitor-status.php')
+      .then(response => response.json())
+      .then(data => {
+        const statusSpan = document.getElementById('animeitorStatus');
+        statusSpan.innerHTML = `<span style="color: ${data.color}">●</span> ${data.status}`;
+      })
+      .catch(error => {
+        document.getElementById('animeitorStatus').innerText = 'Error fetching status';
+        console.error('Error:', error);
+      });
+  }
+
+  window.addEventListener('DOMContentLoaded', function () {
+    setInterval(updateAnimeitorStatus, 5000);
+    updateAnimeitorStatus();
+  });
+</script>
 
 </body>
 </html>

@@ -80,6 +80,13 @@ if (($s = DBSiteInfo($_SESSION["usertable"]["contestnumber"], $_SESSION["usertab
 
 //$task = DBOpenTasksInSites($_SESSION["usertable"]["contestnumber"], $s["sitetasking"]);
 $task = DBAllTasksInSites($_SESSION["usertable"]["contestnumber"], $s["sitetasking"], 'task');
+$filtered_tasks = array();
+for ($i = 0; $i < count($task); $i++) {
+    if (strpos($task[$i]["username"], "teamext") !== 0) {
+        $filtered_tasks[] = $task[$i];
+    }
+}
+$task = $filtered_tasks;
 
 $ds = DIRECTORY_SEPARATOR;
 if ($ds == "") {

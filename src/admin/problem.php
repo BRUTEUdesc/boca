@@ -35,6 +35,11 @@ if (file_exists($contest_path) && is_readable($contest_path)) {
     echo "<br><b>Contest completo:</b> <a href=\"../downloadcontest.php\">contest.pdf</a>";
     echo "<br>";
 }
+$contest_en_path = "/var/www/boca/src/private/secretcontest/contest-en.pdf";
+if (file_exists($contest_en_path) && is_readable($contest_en_path)) {
+    echo "<br><b>Complete contest (en):</b> <a href=\"../downloadencontest.php\">contest-en.pdf</a>";
+    echo "<br>";
+}
 
 if (isset($_GET["delete"]) && is_numeric($_GET["delete"]) && isset($_GET["input"])) {
     $param = array();
