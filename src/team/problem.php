@@ -29,6 +29,10 @@ $contest_path = "/var/www/boca/src/private/secretcontest/contest.pdf";
 if (count($prob) != 0 && file_exists($contest_path) && is_readable($contest_path)) {
     echo "<br><b>Contest completo:</b> <a href=\"../downloadcontest.php\">contest.pdf</a>";
 }
+$contest_en_path = "/var/www/boca/src/private/secretcontest/contest-en.pdf";
+if (count($prob) != 0 && file_exists($contest_en_path) && is_readable($contest_en_path)) {
+    echo "<br><b>Contest completo:</b> <a href=\"../downloadencontest.php\">contest-en.pdf</a>";
+}
 ?>
 
 <?php

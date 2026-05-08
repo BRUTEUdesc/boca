@@ -22,6 +22,7 @@ src/private/webcast.*
 src/private/scoretmp/
 src/private/problemtmp/
 src/private/runtmp/
+src/private/comp/*
 src/private/runslog/
 src/autojudgeip/ip_aj1
 src/autojudgeip/ip_aj2

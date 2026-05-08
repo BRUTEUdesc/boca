@@ -20,7 +20,8 @@ require 'header.php';
 
 $contest = $_SESSION["usertable"]["contestnumber"];
 
-$contest_path = "/var/www/boca/src/private/secretcontest/contest.pdf";
+$portuguese_contest_path = "/var/www/boca/src/private/secretcontest/contest.pdf";
+$english_contest_path = "/var/www/boca/src/private/secretcontest/contest-en.pdf";
 
 if (($ct = DBContestInfo($contest)) == null) {
     ForceLoad("$loc/index.php");
@@ -92,11 +93,11 @@ if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["p
     if ($_POST["confirmation"] == "confirm") {
         $param['number'] = $contest;
 
-        if (isset($_FILES["contestPDF"]) && $_FILES["contestPDF"]["name"] != "") {
-            $type = myhtmlspecialchars($_FILES["contestPDF"]["type"]);
-            $size = myhtmlspecialchars($_FILES["contestPDF"]["size"]);
-            $name = myhtmlspecialchars($_FILES["contestPDF"]["name"]);
-            $temp = myhtmlspecialchars($_FILES["contestPDF"]["tmp_name"]);
+        if (isset($_FILES["portugueseContestPDF"]) && $_FILES["portugueseContestPDF"]["name"] != "") {
+            $type = myhtmlspecialchars($_FILES["portugueseContestPDF"]["type"]);
+            $size = myhtmlspecialchars($_FILES["portugueseContestPDF"]["size"]);
+            $name = myhtmlspecialchars($_FILES["portugueseContestPDF"]["name"]);
+            $temp = myhtmlspecialchars($_FILES["portugueseContestPDF"]["tmp_name"]);
 
             if (!is_uploaded_file($temp)) {
                 IntrusionNotify("file upload problem.");
@@ -108,22 +109,57 @@ if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["p
             if ($file_ext != "pdf") {
                 MSGError('Please upload a valid PDF file.');
             } else {
-                if (!move_uploaded_file($temp, $contest_path)) {
+                if (!move_uploaded_file($temp, $portuguese_contest_path)) {
                     MSGError('Failed to upload Contest PDF.');
                 }
             }
         }
 
-        if (isset($_POST["deletePDF"]) && $_POST["deletePDF"] == "Yes") {
-            if (file_exists($contest_path)) {
+        if (isset($_FILES["englishContestPDF"]) && $_FILES["englishContestPDF"]["name"] != "") {
+            $type = myhtmlspecialchars($_FILES["englishContestPDF"]["type"]);
+            $size = myhtmlspecialchars($_FILES["englishContestPDF"]["size"]);
+            $name = myhtmlspecialchars($_FILES["englishContestPDF"]["name"]);
+            $temp = myhtmlspecialchars($_FILES["englishContestPDF"]["tmp_name"]);
+
+            if (!is_uploaded_file($temp)) {
+                IntrusionNotify("file upload problem.");
+                ForceLoad("../index.php");
+            }
+
+            // Verifique se o arquivo é um PDF
+            $file_ext = strtolower(end(explode('.', $name)));
+            if ($file_ext != "pdf") {
+                MSGError('Please upload a valid PDF file.');
+            } else {
+                if (!move_uploaded_file($temp, $english_contest_path)) {
+                    MSGError('Failed to upload Contest PDF.');
+                }
+            }
+        }
+
+        if (isset($_POST["deletePortuguesePDF"]) && $_POST["deletePortuguesePDF"] == "Yes") {
+            if (file_exists($portuguese_contest_path)) {
                 // Delete the file
-                if (unlink($contest_path)) {
-                    echo "Contest PDF deleted successfully!";
+                if (unlink($portuguese_contest_path)) {
+                    echo "Portuguese Contest PDF deleted successfully!";
                 } else {
-                    echo "Failed to delete Contest PDF.";
+                    echo "Failed to delete Portuguese Contest PDF.";
                 }
             } else {
-                echo "Contest PDF does not exist.";
+                echo "Portuguese Contest PDF does not exist.";
+            }
+        }
+
+        if (isset($_POST["deleteEnglishPDF"]) && $_POST["deleteEnglishPDF"] == "Yes") {
+            if (file_exists($english_contest_path)) {
+                // Delete the file
+                if (unlink($english_contest_path)) {
+                    echo "English Contest PDF deleted successfully!";
+                } else {
+                    echo "Failed to delete English Contest PDF.";
+                }
+            } else {
+                echo "English Contest PDF does not exist.";
             }
         }
 
@@ -381,20 +417,33 @@ if (count($exd) >= 4 && is_numeric($exd[3]) && $exd[3] > 0) {
         </td>
       </tr>
       <tr>
-          <td width="35%" align=right>Contest PDF: </td>
+          <td width="35%" align=right>Portuguese Contest PDF: </td>
           <td width="65%">
-        <input type="file" name="contestPDF" size="40">
-        <?php if (file_exists($contest_path)) {
+        <input type="file" name="portugueseContestPDF" size="40">
+        <?php if (file_exists($portuguese_contest_path)) {
             echo "<b><= has been set</b>";
         } ?>
           </td>
       </tr>
       <tr>
-          <td width="35%" align=right>Delete Contest PDF:</td>
+          <td width="35%" align=right>English Contest PDF: </td>
           <td width="65%">
-        <form action="" method="post">
-            <input type="checkbox" name="deletePDF" value="Yes"> Check this box and submit to delete the PDF.
-        </form>
+        <input type="file" name="englishContestPDF" size="40">
+        <?php if (file_exists($english_contest_path)) {
+            echo "<b><= has been set</b>";
+        } ?>
+          </td>
+      </tr>
+      <tr>
+          <td width="35%" align=right>Delete Portuguese Contest PDF:</td>
+          <td width="65%">
+            <input type="checkbox" name="deletePortuguesePDF" value="Yes"> Check this box and submit to delete the Portuguese PDF.
+          </td>
+      </tr>
+      <tr>
+          <td width="35%" align=right>Delete English Contest PDF:</td>
+          <td width="65%">
+            <input type="checkbox" name="deleteEnglishPDF" value="Yes"> Check this box and submit to delete the English PDF.
           </td>
       </tr>
     </table>
