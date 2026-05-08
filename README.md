@@ -69,13 +69,12 @@ Este valor é **hardcoded** e deve ser atualizado manualmente quando o contest d
 
 ## `score.sep` e `webcast.sep`
 
-Esses arquivos são **ignorados pelo git** e devem ser gerenciados diretamente no servidor.
+Esses arquivos são versionados e definem a configuração de categorias/faixas do contest.
 
 ### `src/private/score.sep`
 
 Define as categorias de pontuação. Formato: `NomeCategoria startsite/endsite/step`
 
-Exemplo atual:
 ```
 Oficial 100/299/1
 CCL 300/399/1
@@ -88,7 +87,6 @@ As faixas podem se sobrepor intencionalmente (ex: Global cobre Oficial e CCL).
 
 Define o intervalo de sites do webcast. Formato: `categoria siteid/startsite/endsite`
 
-Exemplo atual:
 ```
 global 1/100/499
 ```
