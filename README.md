@@ -55,15 +55,9 @@ O status do animeitor **não é verificado no carregamento da página**. Em vez 
 
 ---
 
-## `ANIMEITOR_CONTEST` — número de contest hardcoded
+## `ANIMEITOR_CONTEST` — contest ativo do webcast
 
-Em `src/admin/report/webcast.php`:
-
-```php
-$ANIMEITOR_CONTEST = 7;
-```
-
-Este valor é **hardcoded** e deve ser atualizado manualmente quando o contest do webcast mudar. A alternativa baseada em sessão (`$_SESSION["usertable"]["contestnumber"]`) está comentada na linha seguinte.
+Em `src/admin/report/webcast.php` há uma variável `$ANIMEITOR_CONTEST` que define qual contest o webcast exibe. Ela **não precisa ser editada manualmente** — o painel admin do animeitor (`src/admin/animeitor.php`) possui um campo para alterar esse valor, que reescreve o arquivo via regex.
 
 ---
 
