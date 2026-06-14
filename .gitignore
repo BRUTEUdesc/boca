@@ -39,7 +39,7 @@ src/client-v2-*.js
 doc/problemexamples/*.zip
 
 # Arquivos PDF temporários ou gerados em tempo de execução
-src/private/secretcontest/*.pdf
+src/private/secretcontest/
 
 # --------------------------------------
 # Ferramentas e scripts de deploy
