@@ -331,7 +331,10 @@ for ($i = 0; $i < count($prob); $i++) {
                 $param['name'] = trim($_POST["problemname" . $prob[$i]['number']]);
                 $param['fake'] = 'f';
                 $param['colorname'] = $colorname;
-                $params['color'] = $color;
+                $param['color'] = $color;
+                if (isset($prob[$i]['autojudge'])) {
+                    $param['autojudge'] = (int) $prob[$i]['autojudge'];
+                }
                 DBNewProblem($_SESSION["usertable"]["contestnumber"], $param);
             }
             ForceLoad("problem.php");
