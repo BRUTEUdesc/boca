@@ -220,7 +220,7 @@ function cleardir($dir, $cddir = true, $secure = true, $removedir = true)
                 @rmdir($dir);
             }
         } else {
-            if ($secure && !is_link($dir)) {
+            if ($secure && !is_link($dir) && is_file($dir)) {
                 file_put_contents($dir, str_repeat('XXXXXXXXXX', 10000));
             }
             @unlink($dir);
