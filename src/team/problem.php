@@ -24,12 +24,13 @@ if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
 ?>
 
 <?php
+$contest = (int)$_SESSION["usertable"]["contestnumber"];
 $prob = DBGetProblems($_SESSION["usertable"]["contestnumber"]);
-$contest_path = "/var/www/boca/src/private/secretcontest/contest.pdf";
+$contest_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest.pdf";
 if (count($prob) != 0 && file_exists($contest_path) && is_readable($contest_path)) {
     echo "<br><b>Contest completo:</b> <a href=\"../downloadcontest.php\">contest.pdf</a>";
 }
-$contest_en_path = "/var/www/boca/src/private/secretcontest/contest-en.pdf";
+$contest_en_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest-en.pdf";
 if (count($prob) != 0 && file_exists($contest_en_path) && is_readable($contest_en_path)) {
     echo "<br><b>Complete contest (en):</b> <a href=\"../downloadencontest.php\">contest-en.pdf</a>";
 }

@@ -30,12 +30,13 @@ $colors_file = '/var/www/boca/src/admin/default_problem_colors.json';
 // Carrega o JSON de cores (retorna array associativo)
 $default_colors = json_decode(file_get_contents($colors_file), true);
 
-$contest_path = "/var/www/boca/src/private/secretcontest/contest.pdf";
+$contest = (int)$_SESSION["usertable"]["contestnumber"];
+$contest_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest.pdf";
 if (file_exists($contest_path) && is_readable($contest_path)) {
     echo "<br><b>Contest completo:</b> <a href=\"../downloadcontest.php\">contest.pdf</a>";
     echo "<br>";
 }
-$contest_en_path = "/var/www/boca/src/private/secretcontest/contest-en.pdf";
+$contest_en_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest-en.pdf";
 if (file_exists($contest_en_path) && is_readable($contest_en_path)) {
     echo "<br><b>Complete contest (en):</b> <a href=\"../downloadencontest.php\">contest-en.pdf</a>";
     echo "<br>";
@@ -203,9 +204,13 @@ if (isset($_POST['Submit5']) && $_POST['Submit5'] == 'Send') {
     ForceLoad('problem.php');
 }
 
-if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) && is_numeric($_POST["problemnumber"]) &&
+if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) &&
     isset($_POST["problemname"])) {
-    if (strpos(trim($_POST["problemname"]), ' ') !== false) {
+    $problem_number = trim($_POST["problemnumber"]);
+    if (!is_numeric($problem_number)) {
+        $_POST["confirmation"] = '';
+        MSGError('Problem number must be numeric. Use the numeric index, for example 2 for problem B.');
+    } elseif (strpos(trim($_POST["problemname"]), ' ') !== false) {
         $_POST["confirmation"] = '';
         MSGError('Problem short name cannot have spaces');
     } else {
@@ -223,11 +228,6 @@ if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) && is_numeric($_P
                 $name = "";
             }
 
-            $problem_number = strtoupper(trim($_POST["problemnumber"]));
-            if (!is_numeric($problem_number)) {
-                MSGError('Problem number must be numeric');
-                ForceLoad('problem.php');
-            }
             $problem_number = (int)$problem_number;
 
             $problem_name = trim($_POST["problemname"]);

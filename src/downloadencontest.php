@@ -11,8 +11,9 @@ if (!ValidSession()) {
     ForceLoad("index.php");
 }
 
+$contest = (int)$_SESSION["usertable"]["contestnumber"];
 $prob = DBGetProblems($_SESSION["usertable"]["contestnumber"]);
-$contest_path = "/var/www/boca/src/private/secretcontest/contest-en.pdf";
+$contest_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest-en.pdf";
 $is_admin = $_SESSION["usertable"]["usertype"] == "admin";
 
 if ((!$is_admin && count($prob) == 0) || !file_exists($contest_path) || !is_readable($contest_path)) {
@@ -20,7 +21,7 @@ if ((!$is_admin && count($prob) == 0) || !file_exists($contest_path) || !is_read
     ForceLoad("index.php");
 }
 
-$filePath = '/var/www/boca/src/private/secretcontest/contest-en.pdf';
+$filePath = $contest_path;
 
 // Verificar se o arquivo existe
 if (file_exists($filePath)) {

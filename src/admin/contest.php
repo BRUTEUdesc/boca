@@ -20,8 +20,8 @@ require 'header.php';
 
 $contest = $_SESSION["usertable"]["contestnumber"];
 
-$portuguese_contest_path = "/var/www/boca/src/private/secretcontest/contest.pdf";
-$english_contest_path = "/var/www/boca/src/private/secretcontest/contest-en.pdf";
+$portuguese_contest_path = "/var/www/boca/src/private/secretcontest/" . (int)$contest . "/contest.pdf";
+$english_contest_path = "/var/www/boca/src/private/secretcontest/" . (int)$contest . "/contest-en.pdf";
 
 if (($ct = DBContestInfo($contest)) == null) {
     ForceLoad("$loc/index.php");
@@ -109,6 +109,7 @@ if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["p
             if ($file_ext != "pdf") {
                 MSGError('Please upload a valid PDF file.');
             } else {
+                @mkdir(dirname($portuguese_contest_path), 0755, true);
                 if (!move_uploaded_file($temp, $portuguese_contest_path)) {
                     MSGError('Failed to upload Contest PDF.');
                 }
@@ -131,6 +132,7 @@ if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["p
             if ($file_ext != "pdf") {
                 MSGError('Please upload a valid PDF file.');
             } else {
+                @mkdir(dirname($english_contest_path), 0755, true);
                 if (!move_uploaded_file($temp, $english_contest_path)) {
                     MSGError('Failed to upload Contest PDF.');
                 }
