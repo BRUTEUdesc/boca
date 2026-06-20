@@ -80,6 +80,14 @@ if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["p
         $param['localsite'] = $_POST["localsite"];
         $param['mainsiteurl'] = $_POST["mainsiteurl"];
 
+        // Ensure the form fields (start date, duration, etc.) are always persisted,
+        // even when "Activate" is pressed right after creating the contest. Inside
+        // DBUpdateContest the field update is gated by (updatetime > stored updatetime),
+        // so we force an updatetime strictly greater than the contest's current one.
+        $curct = DBContestInfo($_POST["contest"]);
+        $curupd = ($curct != null && isset($curct["updatetime"])) ? (int)$curct["updatetime"] : 0;
+        $param['updatetime'] = max(time(), $curupd + 1);
+
         DBUpdateContest($param);
         if ($ac == 1 && $_POST["contest"] != $_SESSION["usertable"]["contestnumber"]) {
             $cf = globalconf();
