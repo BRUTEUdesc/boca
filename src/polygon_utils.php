@@ -31,7 +31,7 @@ function convert_polygon_to_boca($inputfilepath, $letter)
     $JAVA_TL_FACTOR = 3;
     $PYTHON_TL_FACTOR = 3;
 
-    $command = "cd $baseDir && python3 make_from_full_package.py $letterArg $tempZip $JAVA_TL_FACTOR $PYTHON_TL_FACTOR --no-backup > " . $logFile . " 2>&1";
+    $command = "cd $baseDir && python3 make_from_full_package.py $letterArg $tempZip $JAVA_TL_FACTOR $PYTHON_TL_FACTOR --no-backup --zip-only > " . $logFile . " 2>&1";
     shell_exec($command);
 
     $outputPath = "$baseDir/zip_packages/Problem_" . trim($letter) . ".zip";
