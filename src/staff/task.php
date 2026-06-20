@@ -154,7 +154,13 @@ for ($i = 0; $i < count($task); $i++) {
     echo "  <td nowrap>" . dateconvminutes($task[$i]["timestamp"]) . "</td>\n";
     echo "  <td nowrap>".$task[$i]["username"]."(" . $task[$i]["user"] . ") / ".$task[$i]["site"]."</td>\n";
 
-    echo "  <td>" . $task[$i]["description"];
+    $desc = $task[$i]["description"];
+    if (!empty($task[$i]["fullname"])) {
+        $fn = $task[$i]["fullname"];
+        $short = mb_strlen($fn) > 35 ? mb_substr($fn, 0, 35) . '…' : $fn;
+        $desc = preg_replace('/^("' . preg_quote($task[$i]["username"], '/') . '")/', '$1 (' . htmlspecialchars($short) . ')', $desc);
+    }
+    echo "  <td>" . $desc;
     if ($task[$i]["color"] != "") {
         echo " <img alt=\"".$task[$i]["colorname"]."\" width=\"25\" ".
             "src=\"" . balloonurl($task[$i]["color"]) ."\" />";
