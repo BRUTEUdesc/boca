@@ -323,7 +323,8 @@ foreach (glob("$soundsDir/*.mp3") as $f) {
       $ul = urlencode($login);
       $hasPhoto = isset($photos[$login]);
       $hasSound = isset($sounds[$login]);
-      $v = time();
+      $pv = $hasPhoto ? @filemtime($photos[$login]) : 0;
+      $sv = $hasSound ? @filemtime($sounds[$login]) : 0;
     ?>
     <tr>
       <td><?php echo htmlspecialchars($team['name']); ?></td>
@@ -331,7 +332,7 @@ foreach (glob("$soundsDir/*.mp3") as $f) {
 
       <td align="center">
         <?php if ($hasPhoto):
-          $purl = "/animeitor/photos/$ul.webp?v=$v"; ?>
+          $purl = "/animeitor/photos/$ul.webp?v=$pv"; ?>
           <img class="media-thumb" src="<?php echo $purl; ?>" onclick="showImg('<?php echo $purl; ?>')">
           <br>
           <form method="post" style="display:inline">
@@ -356,7 +357,7 @@ foreach (glob("$soundsDir/*.mp3") as $f) {
 
       <td align="center">
         <?php if ($hasSound): ?>
-          <audio controls src="/animeitor/sounds/<?php echo $ul; ?>.mp3?v=<?php echo $v; ?>"
+          <audio controls preload="none" src="/animeitor/sounds/<?php echo $ul; ?>.mp3?v=<?php echo $sv; ?>"
                  style="height:28px; width:140px; vertical-align:middle"></audio>
           <br>
           <form method="post" style="display:inline">
