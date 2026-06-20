@@ -216,11 +216,31 @@ $photosDir = '/var/www/maratona-animeitor-rust/server/photos';
 $soundsDir = '/var/www/maratona-animeitor-rust/server/sounds';
 
 // Handle upload
+$uploadMsg = '';
+function uploadErrText($code)
+{
+    switch ($code) {
+        case UPLOAD_ERR_OK: return 'OK';
+        case UPLOAD_ERR_INI_SIZE: return 'arquivo excede upload_max_filesize do PHP';
+        case UPLOAD_ERR_FORM_SIZE: return 'arquivo excede MAX_FILE_SIZE do form';
+        case UPLOAD_ERR_PARTIAL: return 'upload parcial (interrompido)';
+        case UPLOAD_ERR_NO_FILE: return 'nenhum arquivo recebido';
+        case UPLOAD_ERR_NO_TMP_DIR: return 'sem diretório temporário no servidor';
+        case UPLOAD_ERR_CANT_WRITE: return 'falha ao gravar em disco';
+        case UPLOAD_ERR_EXTENSION: return 'upload bloqueado por extensão do PHP';
+        default: return "erro desconhecido ($code)";
+    }
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['media_team'])) {
     $team = preg_replace('/[^a-zA-Z0-9_\-]/', '', $_POST['media_team']);
     $type = $_POST['media_type'] ?? '';
+    $err = isset($_FILES['media_file']) ? $_FILES['media_file']['error'] : UPLOAD_ERR_NO_FILE;
 
-    if ($team !== '' && isset($_FILES['media_file']) && $_FILES['media_file']['error'] === UPLOAD_ERR_OK) {
+    if ($team === '') {
+        $uploadMsg = "<p style='color:red'>✘ Time inválido.</p>";
+    } elseif ($err !== UPLOAD_ERR_OK) {
+        $uploadMsg = "<p style='color:red'>✘ Upload falhou: " . uploadErrText($err) . ".</p>";
+    } else {
         $tmp = $_FILES['media_file']['tmp_name'];
         $origName = $_FILES['media_file']['name'];
         $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
@@ -228,20 +248,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['media_team'])) {
         if ($type === 'photo' && in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) {
             $dest = "$photosDir/$team.webp";
             if ($ext === 'webp') {
-                move_uploaded_file($tmp, $dest);
+                $ok = move_uploaded_file($tmp, $dest);
             } else {
-                shell_exec("convert " . escapeshellarg($tmp) . " " . escapeshellarg($dest));
+                $safeTmp = "$photosDir/.up_$team.$ext";
+                $ok = move_uploaded_file($tmp, $safeTmp);
+                if ($ok) {
+                    $out = [];
+                    $rc = 0;
+                    exec("convert " . escapeshellarg($safeTmp) . " " . escapeshellarg($dest) . " 2>&1", $out, $rc);
+                    @unlink($safeTmp);
+                    if ($rc !== 0 || !file_exists($dest)) {
+                        $ok = false;
+                        $uploadMsg = "<p style='color:red'>✘ Conversão p/ webp falhou (convert rc=$rc): "
+                            . htmlspecialchars(implode(' ', $out)) . "</p>";
+                    }
+                }
             }
-            echo "<p style='color:green'>✔ Foto de <b>$team</b> salva.</p>";
+            if ($ok && file_exists($dest)) {
+                $uploadMsg = "<p style='color:green'>✔ Foto de <b>" . htmlspecialchars($team) . "</b> salva.</p>";
+            } elseif ($uploadMsg === '') {
+                $uploadMsg = "<p style='color:red'>✘ Não foi possível salvar a foto (permissão em $photosDir?).</p>";
+            }
         } elseif ($type === 'sound' && $ext === 'mp3') {
             $dest = "$soundsDir/$team.mp3";
-            move_uploaded_file($tmp, $dest);
-            echo "<p style='color:green'>✔ Som de <b>$team</b> salvo.</p>";
+            $ok = move_uploaded_file($tmp, $dest);
+            $uploadMsg = $ok
+                ? "<p style='color:green'>✔ Som de <b>" . htmlspecialchars($team) . "</b> salvo.</p>"
+                : "<p style='color:red'>✘ Não foi possível salvar o som (permissão em $soundsDir?).</p>";
         } else {
-            echo "<p style='color:red'>✘ Formato inválido. Foto: png/jpg/webp · Som: mp3</p>";
+            $uploadMsg = "<p style='color:red'>✘ Formato inválido (.$ext). Foto: png/jpg/webp · Som: mp3</p>";
         }
     }
 }
+echo $uploadMsg;
 
 // Handle delete
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_team'], $_POST['delete_type'])) {
