@@ -139,6 +139,19 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "clean_confirm") {
   </center>
 </form>
 
+<br>
+<table width="100%" border=1>
+<tr>
+ <td><center><b>Animeitor URLs</b></center></td>
+</tr>
+</table>
+<br>
+<center>
+  <div id="animeitorUrls" style="font-family: monospace; font-size: 13px; text-align: left; display: inline-block;">
+    Carregando URLs...
+  </div>
+</center>
+
 <script>
   function updateAnimeitorStatus() {
     fetch('animeitor-status.php')
@@ -153,9 +166,40 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "clean_confirm") {
       });
   }
 
+  function loadAnimeitorUrls() {
+    fetch('animeitor-urls.php')
+      .then(response => response.json())
+      .then(entries => {
+        const div = document.getElementById('animeitorUrls');
+        if (!entries.length) { div.textContent = '(sem URLs disponíveis)'; return; }
+        let html = '';
+        let lastLabel = null;
+        entries.forEach((entry, i) => {
+          // blank line between Animeitor block and Reveleitor block
+          if (i > 0 && entry.items[0] && lastLabel !== null && entry.items[0].label !== lastLabel) {
+            html += '<br>';
+          }
+          html += `<b>→ ${escHtml(entry.title)}</b><br>`;
+          entry.items.forEach(item => {
+            lastLabel = item.label;
+            html += `&nbsp;&nbsp;&nbsp;&nbsp;${escHtml(item.label)} em <a href="${escHtml(item.url)}" target="_blank">${escHtml(item.url)}</a><br>`;
+          });
+        });
+        div.innerHTML = html;
+      })
+      .catch(() => {
+        document.getElementById('animeitorUrls').textContent = 'Erro ao carregar URLs.';
+      });
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
   window.addEventListener('DOMContentLoaded', function () {
     setInterval(updateAnimeitorStatus, 5000);
     updateAnimeitorStatus();
+    loadAnimeitorUrls();
   });
 </script>
 
