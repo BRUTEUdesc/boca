@@ -158,7 +158,7 @@ for ($i = 0; $i < count($task); $i++) {
     if (!empty($task[$i]["fullname"])) {
         $fn = $task[$i]["fullname"];
         $short = mb_strlen($fn) > 40 ? mb_substr($fn, 0, 40) . '…' : $fn;
-        $desc = str_replace('"' . $task[$i]["username"] . '"', '"' . htmlspecialchars($short) . '"', $desc);
+        $desc = str_replace('&quot;' . $task[$i]["username"] . '&quot;', '&quot;' . htmlspecialchars($short) . '&quot;', $desc);
     }
     echo "  <td>" . $desc;
     if ($task[$i]["color"] != "") {
