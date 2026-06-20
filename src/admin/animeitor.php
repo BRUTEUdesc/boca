@@ -99,7 +99,11 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "clean_confirm") {
   <center>
     <table border="0">
       <tr>
-        <td width="35%" align=right>Current Contest&nbsp;:</td>
+        <td width="35%" align=right>Active BOCA Contest&nbsp;:</td>
+        <td width="65%"><?php echo htmlspecialchars($ct["contestnumber"]); ?></td>
+      </tr>
+      <tr>
+        <td width="35%" align=right>Animeitor Contest&nbsp;:</td>
         <td width="65%">
           <?php echo getCurrentContest(); ?>
         </td>
