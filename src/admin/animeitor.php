@@ -263,11 +263,12 @@ $contestnumber = (int)$ct['contestnumber'];
 $sql = "SELECT username, userfullname FROM usertable
         WHERE contestnumber=$contestnumber AND usertype='team' AND userenabled='t'
         ORDER BY username";
-$result = DBExec($sql);
+$c = DBConnect();
+$result = DBExec($c, $sql, 'get teams');
 if ($result) {
     for ($i = 0; $i < DBnlines($result); $i++) {
         $row = DBRow($result, $i);
-        $teams[] = ['login' => $row[0], 'name' => $row[1]];
+        $teams[] = ['login' => $row['username'], 'name' => $row['userfullname']];
     }
 }
 
