@@ -1,7 +1,7 @@
 <?php
-require('../header.php');
+session_start();
 
-if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
+if (!isset($_SESSION["usertable"]) || $_SESSION["usertable"]["usertype"] !== 'admin') {
     http_response_code(403);
     exit;
 }
