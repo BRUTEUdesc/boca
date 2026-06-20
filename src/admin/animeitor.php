@@ -282,69 +282,105 @@ foreach (glob("$soundsDir/*.mp3") as $f) {
 }
 ?>
 
+<style>
+  .media-table { border-collapse:collapse; font-size:13px; margin:0 auto; }
+  .media-table th { background:#333; color:#fff; padding:8px 14px; }
+  .media-table td { padding:7px 14px; border-bottom:1px solid #ddd; vertical-align:middle; }
+  .media-table tr:nth-child(even) td { background:#f6f6f6; }
+  .media-thumb { height:42px; border:1px solid #aaa; border-radius:3px; vertical-align:middle; cursor:zoom-in; }
+  .media-del { color:#c00; background:none; border:none; cursor:pointer; font-size:11px; padding:0; margin-top:3px; }
+  #imgLightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85);
+                 z-index:9999; cursor:zoom-out; text-align:center; }
+  #imgLightbox img { max-width:90%; max-height:90%; margin-top:3%; border:3px solid #fff; border-radius:4px; }
+</style>
+
+<div id="imgLightbox" onclick="this.style.display='none'">
+  <img id="imgLightboxImg" src="" alt="">
+</div>
+<script>
+  function showImg(url) {
+    document.getElementById('imgLightboxImg').src = url;
+    document.getElementById('imgLightbox').style.display = 'block';
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') document.getElementById('imgLightbox').style.display = 'none';
+  });
+</script>
+
 <center>
-<form method="post" enctype="multipart/form-data">
-  <table border="0" cellpadding="6" cellspacing="2" style="font-size:13px">
-    <tr style="background:#ddd; font-weight:bold">
-      <td>Time</td>
-      <td>Login</td>
-      <td align="center">Foto atual</td>
-      <td align="center">Upload foto<br><small>png/jpg/webp</small></td>
-      <td align="center">Som atual</td>
-      <td align="center">Upload som<br><small>mp3</small></td>
+  <table class="media-table">
+    <tr>
+      <th>Time</th>
+      <th>Login</th>
+      <th>Foto</th>
+      <th>Upload foto<br><small>png/jpg/webp</small></th>
+      <th>Som</th>
+      <th>Upload som<br><small>mp3</small></th>
     </tr>
     <?php foreach ($teams as $team):
       $login = $team['login'];
+      $hl = htmlspecialchars($login);
+      $ul = urlencode($login);
       $hasPhoto = isset($photos[$login]);
       $hasSound = isset($sounds[$login]);
+      $v = time();
     ?>
-    <tr style="border-bottom:1px solid #ccc">
+    <tr>
       <td><?php echo htmlspecialchars($team['name']); ?></td>
-      <td><code><?php echo htmlspecialchars($login); ?></code></td>
+      <td><code><?php echo $hl; ?></code></td>
+
       <td align="center">
-        <?php if ($hasPhoto): ?>
-          <img src="/animeitor/photos/<?php echo urlencode($login); ?>.webp"
-               style="max-height:48px; max-width:80px; border:1px solid #aaa">
+        <?php if ($hasPhoto):
+          $purl = "/animeitor/photos/$ul.webp?v=$v"; ?>
+          <img class="media-thumb" src="<?php echo $purl; ?>" onclick="showImg('<?php echo $purl; ?>')">
           <br>
-          <button type="submit" name="delete_team" value="<?php echo htmlspecialchars($login); ?>"
-                  onclick="return confirm('Remover foto de <?php echo htmlspecialchars($login); ?>?')"
-                  style="font-size:11px; color:red; border:none; background:none; cursor:pointer"
-                  formnovalidate>
-            <input type="hidden" name="delete_type" value="photo">✖ remover</button>
+          <form method="post" style="display:inline">
+            <input type="hidden" name="delete_team" value="<?php echo $hl; ?>">
+            <input type="hidden" name="delete_type" value="photo">
+            <button type="submit" class="media-del"
+                    onclick="return confirm('Remover foto de <?php echo $hl; ?>?')">✖ remover</button>
+          </form>
         <?php else: ?>
           <span style="color:#aaa">—</span>
         <?php endif; ?>
       </td>
+
       <td align="center">
-        <input type="file" name="media_file" accept=".png,.jpg,.jpeg,.webp"
-               onchange="this.form.media_team.value='<?php echo htmlspecialchars($login); ?>';
-                         this.form.media_type.value='photo'; this.form.submit();">
+        <form method="post" enctype="multipart/form-data" style="display:inline">
+          <input type="hidden" name="media_team" value="<?php echo $hl; ?>">
+          <input type="hidden" name="media_type" value="photo">
+          <input type="file" name="media_file" accept=".png,.jpg,.jpeg,.webp"
+                 onchange="this.form.submit();">
+        </form>
       </td>
+
       <td align="center">
         <?php if ($hasSound): ?>
-          <audio controls src="/animeitor/sounds/<?php echo urlencode($login); ?>.mp3"
-                 style="height:28px; width:120px"></audio>
+          <audio controls src="/animeitor/sounds/<?php echo $ul; ?>.mp3?v=<?php echo $v; ?>"
+                 style="height:28px; width:140px; vertical-align:middle"></audio>
           <br>
-          <button type="submit" name="delete_team" value="<?php echo htmlspecialchars($login); ?>"
-                  onclick="return confirm('Remover som de <?php echo htmlspecialchars($login); ?>?')"
-                  style="font-size:11px; color:red; border:none; background:none; cursor:pointer"
-                  formnovalidate>
-            <input type="hidden" name="delete_type" value="sound">✖ remover</button>
+          <form method="post" style="display:inline">
+            <input type="hidden" name="delete_team" value="<?php echo $hl; ?>">
+            <input type="hidden" name="delete_type" value="sound">
+            <button type="submit" class="media-del"
+                    onclick="return confirm('Remover som de <?php echo $hl; ?>?')">✖ remover</button>
+          </form>
         <?php else: ?>
           <span style="color:#aaa">—</span>
         <?php endif; ?>
       </td>
+
       <td align="center">
-        <input type="file" name="media_file" accept=".mp3"
-               onchange="this.form.media_team.value='<?php echo htmlspecialchars($login); ?>';
-                         this.form.media_type.value='sound'; this.form.submit();">
+        <form method="post" enctype="multipart/form-data" style="display:inline">
+          <input type="hidden" name="media_team" value="<?php echo $hl; ?>">
+          <input type="hidden" name="media_type" value="sound">
+          <input type="file" name="media_file" accept=".mp3"
+                 onchange="this.form.submit();">
+        </form>
       </td>
     </tr>
     <?php endforeach; ?>
   </table>
-  <input type="hidden" name="media_team" value="">
-  <input type="hidden" name="media_type" value="">
-</form>
 </center>
 
 </body>
