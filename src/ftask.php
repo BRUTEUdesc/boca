@@ -243,6 +243,48 @@ function DBAllTasksInSites($contest, $site, $order, $adm = false)
 {
     return DBOpenTasksSNS($contest, $site, -1, $order, $adm);
 }
+// Returns the set of task keys ("tasknumber_site") that are the FIRST SOLVE balloon of each problem.
+// The first solve is decided by the accepted run with the smallest submission time (rundatediff),
+// not by when the balloon task was created (judging time), and ignores runs no longer accepted.
+// Ties in the same second are all first solves. teamext*/teamonline* users are ignored.
+function DBFirstSolveTaskKeys($contest, $tasks)
+{
+    $contest = (int) $contest;
+    $c = DBConnect();
+    $sql = "select usernumber, site, color from (" .
+        "select r.usernumber as usernumber, r.runsitenumber as site, p.problemcolor as color, " .
+        "rank() over (partition by r.runproblem order by r.rundatediff) as rk " .
+        "from runtable as r " .
+        "join answertable as a on a.contestnumber=r.contestnumber and a.answernumber=r.runanswer " .
+        "join problemtable as p on p.contestnumber=r.contestnumber and p.problemnumber=r.runproblem " .
+        "join usertable as u on u.contestnumber=r.contestnumber and u.usernumber=r.usernumber " .
+        "and u.usersitenumber=r.runsitenumber " .
+        "where r.contestnumber=$contest and a.yes='t' and r.runstatus ~ 'judged' " .
+        "and u.usertype='team' and u.username not like 'teamext%' and u.username not like 'teamonline%' " .
+        "and p.problemcolor != '') as x where rk=1";
+    $r = DBExec($c, $sql, "DBFirstSolveTaskKeys(get first solves)");
+    $winners = array();
+    for ($i = 0; $i < DBnlines($r); $i++) {
+        $row = DBRow($r, $i);
+        $winners[$row['usernumber'] . '_' . $row['site'] . '_' . $row['color']] = true;
+    }
+    // map each winner to its (earliest) "must have a balloon" task
+    $best = array();
+    foreach ($tasks as $t) {
+        if ($t['color'] == '' || strpos($t['description'], '_NO_') !== false) {
+            continue;
+        }
+        $wk = $t['user'] . '_' . $t['site'] . '_' . $t['color'];
+        if (isset($winners[$wk]) && (!isset($best[$wk]) || $t['number'] < $best[$wk]['number'])) {
+            $best[$wk] = $t;
+        }
+    }
+    $keys = array();
+    foreach ($best as $t) {
+        $keys[$t['number'] . '_' . $t['site']] = true;
+    }
+    return $keys;
+}
 function DBOpenTasks($contest)
 {
     return DBOpenTasksSNS($contest, "x", 1);
