@@ -385,7 +385,7 @@ function DBNewProblem($contestnumber, $param, $c = null)
            'basename','inputfilename','inputfilepath', 'autojudge');
     $colorname = '';
     $color = '';
-    $autojudge = 0;
+    $autojudge = ''; // '' = do not touch problemautojudge (0 != '' is true in PHP 8)
     $fake = 'f';
     foreach ($ac as $key) {
         if (!isset($param[$key])) {

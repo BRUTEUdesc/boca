@@ -109,16 +109,7 @@ for ($i = 0; $i < count($task); $i++) {
     }
 }
 $task = $filtered_tasks;
-$first_solve_keys = [];
-$seen_colors = [];
-$tasks_by_time = $task;
-usort($tasks_by_time, function($a, $b) { return $a['timestamp'] - $b['timestamp']; });
-foreach ($tasks_by_time as $t) {
-    if ($t['color'] != '' && !isset($seen_colors[$t['color']])) {
-        $seen_colors[$t['color']] = true;
-        $first_solve_keys[$t['number'] . '_' . $t['site']] = true;
-    }
-}
+$first_solve_keys = DBFirstSolveTaskKeys($_SESSION["usertable"]["contestnumber"], $task);
 for ($i = 0; $i < count($task); $i++) {
     $st = $task[$i]["status"];
 
