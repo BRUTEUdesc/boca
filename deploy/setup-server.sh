@@ -71,7 +71,8 @@ for c in /etc/apache2/conf-enabled/php*-fpm.conf; do
 done
 a2enconf -q "php$PHPV-fpm"
 apache2ctl configtest 2>&1 | grep -q "Syntax OK"
-systemctl reload apache2
+systemctl enable -q apache2
+systemctl reload-or-restart apache2
 
 PGV=$(pg_lsclusters -h | awk '$2=="main" && $3=="5432" {print $1}' | head -1)
 [ -n "$PGV" ] || { echo "nenhum cluster PostgreSQL 'main' na porta 5432"; exit 1; }
