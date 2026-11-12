@@ -82,7 +82,7 @@ if (($s = DBSiteInfo($_SESSION["usertable"]["contestnumber"], $_SESSION["usertab
 $task = DBAllTasksInSites($_SESSION["usertable"]["contestnumber"], $s["sitetasking"], 'task');
 $filtered_tasks = array();
 for ($i = 0; $i < count($task); $i++) {
-    if (strpos($task[$i]["username"], "teamext") !== 0) {
+    if (strpos($task[$i]["username"], "teamext") !== 0 && strpos($task[$i]["username"], "teamonline") !== 0) {
         $filtered_tasks[] = $task[$i];
     }
 }
@@ -134,6 +134,17 @@ if (is_readable($_SESSION["locr"] . $ds . 'private' . $ds . 'score.sep')) {
     }
 }
 
+$first_solve_keys = [];
+$seen_colors = [];
+$tasks_by_time = $task;
+usort($tasks_by_time, function($a, $b) { return $a['timestamp'] - $b['timestamp']; });
+foreach ($tasks_by_time as $t) {
+    if ($t['color'] != '' && !isset($seen_colors[$t['color']])) {
+        $seen_colors[$t['color']] = true;
+        $first_solve_keys[$t['number'] . '_' . $t['site']] = true;
+    }
+}
+
 $anyprinted = false;
 for ($i = 0; $i < count($task); $i++) {
     if ($limittasks && (!isset($task[$i]["ok"]) || $task[$i]["ok"] != true)) {
@@ -160,10 +171,14 @@ for ($i = 0; $i < count($task); $i++) {
         $short = mb_strlen($fn) > 40 ? mb_substr($fn, 0, 40) . '…' : $fn;
         $desc = str_replace('&quot;' . $task[$i]["username"] . '&quot;', '&quot;' . htmlspecialchars($short) . '&quot;', $desc);
     }
+    $is_first_solve = isset($first_solve_keys[$task[$i]["number"] . '_' . $task[$i]["site"]]);
     echo "  <td>" . $desc;
     if ($task[$i]["color"] != "") {
         echo " <img alt=\"".$task[$i]["colorname"]."\" width=\"25\" ".
             "src=\"" . balloonurl($task[$i]["color"]) ."\" />";
+    }
+    if ($is_first_solve) {
+        echo " <span style=\"background:#cc0000;color:#ffffff;font-weight:bold;padding:1px 5px;border-radius:3px;font-size:0.85em\">&#9733; FIRST SOLVE &#9733;</span>";
     }
     echo "</td>\n";
     if ($task[$i]["oid"] != null) {
