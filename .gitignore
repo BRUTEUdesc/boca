@@ -43,8 +43,8 @@ src/private/secretcontest/
 
 # --------------------------------------
 # Ferramentas e scripts de deploy
-# (só se não quiser versionar)
-tools/
+# (tools/ é versionado: safeexec.c e boca-autojudge.sh dos autojudges)
+tools/safeexec
 debian/
 
 # Ignorar dependências instaladas com Composer

@@ -1,0 +1,31 @@
+#!/usr/bin/python3
+# Informa ao servidor BOCA o IP atual deste autojudge (DHCP). Chamado a cada minuto por
+# send_ip_to_boca.timer. O token fica em /root/.boca_aj_token (600) e o hostname precisa ser
+# brute-AJ1 ou brute-AJ2 (ver src/autojudgeip/index.php).
+import socket
+import requests
+
+URL = 'https://boca.joinville.udesc.br/autojudgeip/index.php'
+
+
+def local_ip():
+    # IP da interface que sai para o servidor (não envia pacote; evita o 127.0.1.1 do /etc/hosts)
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('boca.joinville.udesc.br', 443))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except OSError:
+        return socket.gethostbyname(socket.gethostname())
+
+
+with open('/root/.boca_aj_token') as f:
+    token = f.read().strip()
+
+data = {'hostname': socket.gethostname(), 'ip': local_ip(), 'token': token}
+response = requests.post(URL, data=data, timeout=20)
+if response.status_code == 200:
+    print('Informação atualizada com sucesso.')
+else:
+    print('Falha ao atualizar a informação.', response.status_code, response.text)

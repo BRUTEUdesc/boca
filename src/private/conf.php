@@ -28,7 +28,7 @@ function globalconf()
     $conf['doenc'] = false;
 
     $conf["dblocal"] = "false"; // use unix socket to connect?
-    $conf["dbhost"] = "localhost";
+    $conf["dbhost"] = $_ENV["BOCA_DB_HOST"] ?? "localhost"; // autojudges: BOCA_DB_HOST no .env
     $conf["dbport"] = "5432";
 
     $conf["dbname"] = "bocadb"; // name of the boca database

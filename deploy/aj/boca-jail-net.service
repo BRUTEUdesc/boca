@@ -1,0 +1,14 @@
+[Unit]
+Description=Bloqueia a rede do usuario bocajail (codigo dos times)
+DefaultDependencies=no
+After=local-fs.target
+Before=network-pre.target bocaautojudge.service
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/boca-jail-net
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

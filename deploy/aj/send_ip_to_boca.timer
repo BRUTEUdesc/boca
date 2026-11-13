@@ -1,0 +1,9 @@
+[Unit]
+Description=Envia o IP deste autojudge ao servidor BOCA a cada minuto
+
+[Timer]
+OnBootSec=10sec
+OnUnitActiveSec=1min
+
+[Install]
+WantedBy=timers.target

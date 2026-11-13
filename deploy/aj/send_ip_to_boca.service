@@ -1,0 +1,8 @@
+[Unit]
+Description=Envia o IP deste autojudge ao servidor BOCA
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/send_ip_to_boca
