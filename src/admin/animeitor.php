@@ -97,7 +97,13 @@ function saveTeamPhoto($login, $origName, $tmp, $photosDir)
     }
     $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
     if (!in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) {
-        return "<p style='color:red'>✘ Invalid photo format (.$ext) for $b. Allowed: png/jpg/webp.</p>";
+        return "<p style='color:red'>✘ Invalid photo format (." . htmlspecialchars($ext) . ") for $b. Allowed: png/jpg/webp.</p>";
+    }
+    // o conteúdo tem que bater com a extensão (não confiar só no nome do arquivo)
+    $imgTypes = ['png' => IMAGETYPE_PNG, 'jpg' => IMAGETYPE_JPEG, 'jpeg' => IMAGETYPE_JPEG, 'webp' => IMAGETYPE_WEBP];
+    $info = @getimagesize($tmp);
+    if ($info === false || $info[2] !== $imgTypes[$ext]) {
+        return "<p style='color:red'>✘ File content is not a valid ." . htmlspecialchars($ext) . " image for $b.</p>";
     }
     $dest = "$photosDir/$team.webp";
     if ($ext === 'webp') {
@@ -108,7 +114,9 @@ function saveTeamPhoto($login, $origName, $tmp, $photosDir)
         if ($ok) {
             $out = [];
             $rc = 0;
-            exec("convert " . escapeshellarg($safeTmp) . " " . escapeshellarg($dest) . " 2>&1", $out, $rc);
+            // força o formato de entrada para o ImageMagick não detectar outro (svg/mvg...) pelo conteúdo
+            $inFmt = ($ext === 'png') ? 'png:' : 'jpg:';
+            exec("convert " . escapeshellarg($inFmt . $safeTmp) . " " . escapeshellarg($dest) . " 2>&1", $out, $rc);
             @unlink($safeTmp);
             if ($rc !== 0 || !file_exists($dest)) {
                 return "<p style='color:red'>✘ WebP conversion failed for $b (convert rc=$rc): "
@@ -131,7 +139,12 @@ function saveTeamSound($login, $origName, $tmp, $soundsDir)
     }
     $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
     if ($ext !== 'mp3') {
-        return "<p style='color:red'>✘ Invalid sound format (.$ext) for $b. Allowed: mp3.</p>";
+        return "<p style='color:red'>✘ Invalid sound format (." . htmlspecialchars($ext) . ") for $b. Allowed: mp3.</p>";
+    }
+    // mp3: começa com tag ID3 ou com um frame MPEG (sync 0xFFE)
+    $head = (string)@file_get_contents($tmp, false, null, 0, 3);
+    if (strncmp($head, 'ID3', 3) !== 0 && !(strlen($head) >= 2 && ord($head[0]) === 0xFF && (ord($head[1]) & 0xE0) === 0xE0)) {
+        return "<p style='color:red'>✘ File content is not a valid .mp3 for $b.</p>";
     }
     $ok = move_uploaded_file($tmp, "$soundsDir/$team.mp3");
     return $ok
