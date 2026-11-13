@@ -12,9 +12,12 @@
 set -euo pipefail
 
 # ---- configuração --------------------------------------------------------------------------
-# Redes que podem acessar o PostgreSQL (os autojudges conectam direto no banco).
-# 10.20.0.0/16 = rede interna UDESC; 200.19.106.0/24 = NAT pelo qual os AJs chegam no servidor.
-DB_ALLOWED_NETS=("10.20.0.0/16" "200.19.106.0/24")
+# IPs que podem acessar o PostgreSQL (os autojudges conectam direto no banco, com SSL e SCRAM).
+# São os IPs de NAT pelos quais cada AJ chega no servidor: AJ1 (10.20.161.98) -> .162,
+# AJ2 (10.20.162.51) -> .163. AJ novo ou NAT trocado: atualizar aqui.
+DB_ALLOWED_IPS=("200.19.106.162/32" "200.19.106.163/32")
+# Redes inteiras (md5) que versões antigas deste script liberavam: removidas do pg_hba e do ufw.
+DB_LEGACY_NETS=("10.20.0.0/16" "200.19.106.0/24")
 
 PACKAGES=(
     apache2 php-fpm php-cli php-pgsql php-gd php-xml php-zip php-intl php-mbstring
@@ -96,9 +99,15 @@ fi
 HBA=$PGDIR/pg_hba.conf
 # nunca deixar o banco aberto para a internet (IPv4 e IPv6)
 sed -i -E '/^(host|hostssl)\s+all\s+all\s+(0\.0\.0\.0\/0|::\/0)(\s|$)/d' "$HBA"
-for net in "${DB_ALLOWED_NETS[@]}"; do
-    grep -qE "^host\s+all\s+all\s+${net//./\\.}\s" "$HBA" ||
-        printf 'host\tall\t\tall\t\t%s\t\tmd5\n' "$net" >> "$HBA"
+for net in "${DB_LEGACY_NETS[@]}"; do
+    sed -i -E "\#^(host|hostssl)\s+all\s+all\s+${net//./\\.}(\s|$)#d" "$HBA"
+done
+for ip in "${DB_ALLOWED_IPS[@]}"; do
+    re=${ip//./\\.}
+    # sem SSL não: uma linha "host" do mesmo IP antes da hostssl casaria primeiro
+    sed -i -E "\#^host\s+all\s+all\s+${re%/32}(/32)?\s#d" "$HBA"
+    grep -qE "^hostssl\s+all\s+all\s+${re}\s+scram-sha-256(\s|$)" "$HBA" ||
+        printf '%-8s%-16s%-16s%-24s%s\n' hostssl all all "$ip" scram-sha-256 >> "$HBA"
 done
 # pg_hba só precisa de reload (não derruba conexões dos autojudges)
 if [ "$pg_restart" = 1 ] || ! systemctl is-active -q "postgresql@$PGV-main"; then
@@ -106,13 +115,46 @@ if [ "$pg_restart" = 1 ] || ! systemctl is-active -q "postgresql@$PGV-main"; the
 else
     systemctl reload "postgresql@$PGV-main"
 fi
+psql_q() { (cd / && runuser -u postgres -- psql -XAtq -v ON_ERROR_STOP=1 -c "$1"); }
+# hostssl precisa de ssl = on (o padrão do pacote do Ubuntu, com o certificado snakeoil)
+[ "$(psql_q 'SHOW ssl')" = on ] ||
+    echo "    ATENÇÃO: ssl = off no PostgreSQL; as linhas hostssl do pg_hba não valem e os AJs não conectam"
+# ALTER SYSTEM (postgresql.auto.conf), como foi feito em prod; só se o valor for outro
+pg_reload=0
+pg_set() { # nome valor
+    if [ "$(psql_q "SHOW $1")" != "$2" ]; then
+        psql_q "ALTER SYSTEM SET $1 = '$2'" >/dev/null
+        pg_reload=1
+    fi
+}
+pg_set password_encryption scram-sha-256
+# loga conexões e autenticação (quem entra no banco); o formato com lista é do PG 18
+if [ "${PGV%%.*}" -ge 18 ]; then pg_set log_connections receipt,authentication
+else pg_set log_connections on; fi
+[ "$pg_reload" = 0 ] || psql_q 'SELECT pg_reload_conf()' >/dev/null
+md5roles=$(psql_q "SELECT string_agg(rolname, ' ') FROM pg_authid WHERE rolpassword LIKE 'md5%'")
+if [ -n "$md5roles" ]; then
+    echo "    ATENÇÃO: senha em md5 (não entra com scram-sha-256 no pg_hba): $md5roles"
+    echo "    refazer com: ALTER ROLE <nome> PASSWORD '<a mesma senha>' (com password_encryption = scram-sha-256)"
+fi
 
 log "firewall (ufw)"
-if ufw status | grep -E "^5432/tcp( \(v6\))?\s+ALLOW\s+Anywhere" >/dev/null; then
+ufw_st=$(ufw status)
+grep -q '^Status: active' <<<"$ufw_st" ||
+    echo "    ATENÇÃO: ufw inativo; só o pg_hba protege a porta 5432 (ligar com: ufw enable)"
+if grep -E "^5432/tcp( \(v6\))?\s+ALLOW\s+Anywhere" <<<"$ufw_st" >/dev/null; then
     ufw delete allow 5432/tcp >/dev/null
 fi
-for net in "${DB_ALLOWED_NETS[@]}"; do
-    ufw allow from "$net" to any port 5432 proto tcp >/dev/null
+for net in "${DB_LEGACY_NETS[@]}"; do
+    if grep -E "^5432/tcp\s+ALLOW\s+${net//./\\.}(\s|$)" <<<"$ufw_st" >/dev/null; then
+        ufw delete allow from "$net" to any port 5432 proto tcp >/dev/null
+    fi
+done
+for ip in "${DB_ALLOWED_IPS[@]}"; do
+    # o ufw mostra o host sem /32
+    re=${ip%/32}
+    grep -E "^5432/tcp\s+ALLOW\s+${re//./\\.}(\s|$)" <<<"$ufw_st" >/dev/null ||
+        ufw allow from "${ip%/32}" to any port 5432 proto tcp >/dev/null
 done
 
 log "verificação"
