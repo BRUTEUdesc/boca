@@ -262,7 +262,11 @@ function DBFirstSolveTaskKeys($contest, $tasks)
         "where r.contestnumber=$contest and a.yes='t' and r.runstatus ~ 'judged' " .
         "and u.usertype='team' and u.username not like 'teamext%' and u.username not like 'teamonline%' " .
         "and p.problemcolor != '') as x where rk=1";
-    $r = DBExec($c, $sql, "DBFirstSolveTaskKeys(get first solves)");
+    // accessory feature: on any DB error just show no badge, never abort the task page
+    $r = DBExecNonStop($c, $sql, "DBFirstSolveTaskKeys(get first solves)");
+    if (!$r) {
+        return array();
+    }
     $winners = array();
     for ($i = 0; $i < DBnlines($r); $i++) {
         $row = DBRow($r, $i);
@@ -270,8 +274,12 @@ function DBFirstSolveTaskKeys($contest, $tasks)
     }
     // map each winner to its (earliest) "must have a balloon" task
     $best = array();
+    if (!is_array($tasks)) {
+        return array();
+    }
     foreach ($tasks as $t) {
-        if ($t['color'] == '' || strpos($t['description'], '_NO_') !== false) {
+        if (!isset($t['color'], $t['user'], $t['site'], $t['number']) || $t['color'] == '' ||
+            strpos((string) ($t['description'] ?? ''), '_NO_') !== false) {
             continue;
         }
         $wk = $t['user'] . '_' . $t['site'] . '_' . $t['color'];
