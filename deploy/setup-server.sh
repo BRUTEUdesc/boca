@@ -51,6 +51,8 @@ EOF
 [ "$(id -u)" = 0 ] || { echo "rode como root"; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 log() { echo "==> $*"; }
+# grava $2 em $1 só se o conteúdo for outro (não mexe no mtime à toa)
+put() { [ "$(cat "$1" 2>/dev/null)" = "$2" ] || printf '%s\n' "$2" > "$1"; }
 
 log "pacotes"
 apt-get update -qq
@@ -198,7 +200,7 @@ if [ -d "$BOCADIR" ]; then
     if [ -d "$BOCADIR/.git/hooks" ]; then
         for h in post-checkout post-merge post-rewrite; do
             f=$BOCADIR/.git/hooks/$h
-            [ "$(cat "$f" 2>/dev/null)" = "$GIT_HOOK" ] || printf '%s\n' "$GIT_HOOK" > "$f"
+            put "$f" "$GIT_HOOK"
             chown root:root "$f"
             chmod 755 "$f"
         done
@@ -206,6 +208,26 @@ if [ -d "$BOCADIR" ]; then
 else
     echo "    ATENÇÃO: $BOCADIR não existe (clonar o repo lá e rodar de novo)"
 fi
+
+log "logrotate do webcast.log e sysctl"
+# webcast.log cresce a cada consulta do animeitor
+put /etc/logrotate.d/boca-webcast "# webcast.log do BOCA (escrito por src/admin/report/webcast.php a cada consulta do animeitor)
+$BOCADIR/src/private/webcast.log {
+    su www-data www-data
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+}"
+# gratuitous ARP ao subir a interface (estava no sysctl.conf antigo e se perdeu no upgrade para 26.04)
+ifc=$(ip -4 route show default | awk '{for (i = 1; i < NF; i++) if ($i == "dev") {print $(i + 1); exit}}')
+put /etc/sysctl.d/60-arp-notify.conf "# Envia gratuitous ARP quando a interface sobe/muda de endereco (ajuda apos migracao de VM)
+net.ipv4.conf.all.arp_notify = 1
+net.ipv4.conf.default.arp_notify = 1${ifc:+
+net.ipv4.conf.${ifc//./\/}.arp_notify = 1}"
+sysctl -q -p /etc/sysctl.d/60-arp-notify.conf
 
 log "verificação"
 code=$(curl -sk -o /dev/null -m 15 -w '%{http_code}' https://localhost/ || true)
