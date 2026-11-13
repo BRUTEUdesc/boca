@@ -38,6 +38,11 @@ class Color
     * @param	integer		alpha [0,255]
     */
 
+    public function __construct(...$args)
+    {
+        $this->Color(...$args);
+    }
+
     public function Color($red, $green, $blue, $alpha = 0)
     {
         $this->red = (int)$red;

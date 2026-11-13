@@ -41,6 +41,11 @@ class Text
     * @access	public
     */
 
+    public function __construct(...$args)
+    {
+        $this->Text(...$args);
+    }
+
     public function Text()
     {
         // Free low-res fonts based on Bitstream Vera <http://dejavu.sourceforge.net/wiki/>

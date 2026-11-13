@@ -36,6 +36,11 @@ class Axis
         * @param	integer		maximum value on the axis
     */
 
+    public function __construct(...$args)
+    {
+        $this->Axis(...$args);
+    }
+
     public function Axis($min, $max)
     {
         $this->min = $min;

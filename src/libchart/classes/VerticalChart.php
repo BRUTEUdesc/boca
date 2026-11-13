@@ -36,6 +36,11 @@ class VerticalChart extends BarChart
         * @param	integer		height of the image
     */
 
+    public function __construct(...$args)
+    {
+        $this->VerticalChart(...$args);
+    }
+
     public function VerticalChart($width = 600, $height = 250)
     {
         parent::BarChart($width, $height);
