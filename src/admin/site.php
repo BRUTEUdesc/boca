@@ -377,6 +377,7 @@ echo "        <td nowrap width=\"35%\" align=right>Start date (contest=" . datec
           <input type="text" name="startdatem" value="<?php echo date("m", $st["sitestartdate"]); ?>" size="2" maxlength="2" />
           /
           <input type="text" name="startdatey" value="<?php echo date("Y", $st["sitestartdate"]); ?>" size="4" maxlength="4" />
+          <br><small><b>Aviso:</b> este hor&aacute;rio &eacute; s&oacute; deste site. Os problemas s&oacute; aparecem para os times a partir do in&iacute;cio do contest (<?php echo dateconv($ct["conteststartdate"]); ?>). Para mudar o hor&aacute;rio da prova inteira, use a aba <a href="contest.php">Contest</a>.</small>
         </td>
       </tr>
       <tr>
