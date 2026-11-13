@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     ForceLoad("animeitor.php");
 }
 
-if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && $_POST["confirmation"] == "contest_confirm") {
+if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && ($_POST["confirmation"] ?? "") == "contest_confirm") {
     $newContest = intval($_POST["setContest"]);
     if ($newContest > 0) {
         if (@file_put_contents($animeitorContestPath, $newContest . "\n", LOCK_EX) !== false) {
@@ -54,7 +54,7 @@ if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && $_POST["confirmat
     ForceLoad("animeitor.php");
 }
 
-if (isset($_POST["command"]) && $_POST["confirmation"] == "animeitor_confirm") {
+if (isset($_POST["command"]) && ($_POST["confirmation"] ?? "") == "animeitor_confirm") {
     $cmd = $_POST["command"];
     if ($cmd == "start" || $cmd == "stop" || $cmd == "restart") {
         shell_exec("sudo /usr/local/bin/animeitor-wrapper.sh $cmd > /dev/null 2>&1 &");
@@ -63,7 +63,7 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "animeitor_confirm") {
     ForceLoad("animeitor.php");
 }
 
-if (isset($_POST["command"]) && $_POST["confirmation"] == "clean_confirm") {
+if (isset($_POST["command"]) && ($_POST["confirmation"] ?? "") == "clean_confirm") {
     shell_exec("sudo /usr/local/bin/clean-webcast-cache.sh > /dev/null 2>&1 &");
     LogLevel("Webcast cache clean dispatched", 1);
     ForceLoad("animeitor.php");
