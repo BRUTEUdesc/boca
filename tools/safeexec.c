@@ -9,6 +9,7 @@
  $ chown root.root safeexec
  $ chmod 4555 safeexec
 */
+#define _GNU_SOURCE /* unshare() e CLONE_NEW* */
 #include <stdlib.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -21,6 +22,8 @@
 #include <signal.h>
 #include <time.h>
 #include <grp.h>
+#include <sched.h>
+#include <sys/mount.h>
 
 #include <string.h>
 #include <errno.h>
@@ -498,6 +501,32 @@ Use -U and -G for that, but you might need to have root privilegies.\n");
 #ifdef DEBUG
 	  fprintf(stderr,"child started\n");
 #endif
+	  /* BRUTE: isola o codigo do time, ainda como root (antes do setuid):
+	     - namespace de rede novo e vazio: nenhuma interface (nem o loopback fica ativo) e os
+	       sockets Unix abstratos do host ficam inacessiveis (sao por namespace de rede);
+	     - namespace de montagem proprio: se houver /proc (o runit.sh do Java/Kotlin/Python monta um
+	       no jail; o chroot -R do C/C++ nao tem), monta por cima um procfs novo com
+	       hidepid=invisible (so os processos do proprio uid) e deixa o /sys somente leitura.
+	       Vale so neste namespace: o /proc e o /sys do host e do jail nao mudam, e o umount do
+	       runit.sh nao desfaz isto.
+	     Falha suave: sem suporte no kernel, avisa no stderr (do controlador, antes do freopen) e
+	     segue como antes; o iptables por uid (deploy/aj/boca-jail-net) continua bloqueando a rede. */
+	  if(geteuid()==0) {
+		  if(unshare(CLONE_NEWNET)<0)
+			  fprintf(stderr, "%s: AVISO: unshare(CLONE_NEWNET) falhou (%s); seguindo sem namespace de rede\n", argv[0], strerror(errno));
+		  if(unshare(CLONE_NEWNS)<0)
+			  fprintf(stderr, "%s: AVISO: unshare(CLONE_NEWNS) falhou (%s); /proc sem hidepid\n", argv[0], strerror(errno));
+		  else {
+			  /* privado antes de montar por cima: nada se propaga para o namespace de quem chamou.
+			     mount(MS_PRIVATE) falha (EINVAL/ENOENT) se nao for ponto de montagem: nada a fazer */
+			  if(mount(NULL, "/proc", NULL, MS_PRIVATE, NULL)==0 &&
+				 mount("proc", "/proc", "proc", MS_NOSUID|MS_NODEV|MS_NOEXEC, "hidepid=invisible")<0)
+				  fprintf(stderr, "%s: AVISO: mount do /proc com hidepid falhou (%s)\n", argv[0], strerror(errno));
+			  if(mount(NULL, "/sys", NULL, MS_PRIVATE, NULL)==0 &&
+				 mount(NULL, "/sys", NULL, MS_REMOUNT|MS_BIND|MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC, NULL)<0)
+				  fprintf(stderr, "%s: AVISO: remount do /sys somente leitura falhou (%s)\n", argv[0], strerror(errno));
+		  }
+	  }
 	  /* BRUTE: sem grupos suplementares do root (so tem efeito/permissao como root) */
 	  if(geteuid()==0 && setgroups(0, NULL)<0) {
 		  fprintf(stderr,"ERROR %s\n",strerror(errno));
