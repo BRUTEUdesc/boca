@@ -22,18 +22,16 @@ if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
     ForceLoad("../index.php");
 }
 
-$webcastPhpPath = __DIR__ . '/report/webcast.php';
+$animeitorContestPath = __DIR__ . '/../private/animeitor.contest';
 
 function getCurrentContest()
 {
-    global $webcastPhpPath;
-    $content = @file_get_contents($webcastPhpPath);
-    if ($content !== false) {
-        if (preg_match('/\$ANIMEITOR_CONTEST\s*=\s*(\d+);/', $content, $matches)) {
-            return intval($matches[1]);
-        }
+    global $animeitorContestPath;
+    $n = (int)trim(@file_get_contents($animeitorContestPath));
+    if ($n > 0) {
+        return $n;
     }
-    return 1;
+    return 7;
 }
 
 // Toda acao POST desta pagina exige o token CSRF da sessao
@@ -45,15 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 }
 
 if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && $_POST["confirmation"] == "contest_confirm") {
-    $content = @file_get_contents($webcastPhpPath);
-    if ($content !== false) {
-        $content = preg_replace(
-            '/\$ANIMEITOR_CONTEST\s*=\s*\d+;/',
-            '$ANIMEITOR_CONTEST = ' . intval($_POST["setContest"]) . ';',
-            $content
-        );
-        if (@file_put_contents($webcastPhpPath, $content, LOCK_EX) !== false) {
-            LogLevel("Contest changed to " . $_POST["setContest"], 1);
+    $newContest = intval($_POST["setContest"]);
+    if ($newContest > 0) {
+        if (@file_put_contents($animeitorContestPath, $newContest . "\n", LOCK_EX) !== false) {
+            LogLevel("Contest changed to " . $newContest, 1);
         }
     }
     ForceLoad("animeitor.php");
