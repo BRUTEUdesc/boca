@@ -79,6 +79,13 @@ if (isset($_POST["problem"]) && isset($_POST["language"]) &&
             $runsfiles = $_SESSION["locr"] . $ds . "private" . $ds . 'runsfiles';
             @mkdir($runsfiles, 0770);
             $temp = tempnam($runsfiles, "bkp-");
+            // arquivo temporario (o conteudo vai para o banco em DBNewRun): apaga ao fim da
+            // requisicao, em qualquer saida (exit), como o PHP faz com o upload do formulario
+            register_shutdown_function(function () use (&$temp) {
+                if (is_string($temp) && strpos(basename($temp), "bkp-") === 0) {
+                    @unlink($temp);
+                }
+            });
             $fout = fopen($temp, "wb");
             fwrite($fout, base64_decode($_POST['data']));
             fclose($fout);
