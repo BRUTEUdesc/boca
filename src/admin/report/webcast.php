@@ -70,7 +70,10 @@ if($i>=count($wcdata)) {
 @mkdir($webcastdir);
 
 $ANIMEITOR_CONTEST = (int)trim(@file_get_contents($webcastparentdir . $ds . 'animeitor.contest'));
-if($ANIMEITOR_CONTEST <= 0) $ANIMEITOR_CONTEST = 7;
+if($ANIMEITOR_CONTEST <= 0) { // sem arquivo: o contest ativo (ou 1, como o upstream)
+	$a = DBGetRow("select contestnumber from contesttable where contestactive='t'", 0);
+	$ANIMEITOR_CONTEST = ($a != null) ? (int)$a['contestnumber'] : 1;
+}
 
 $contest = $ANIMEITOR_CONTEST; //$_SESSION["usertable"]["contestnumber"];
 $site = 1; //$_SESSION["usertable"]["usersitenumber"];
