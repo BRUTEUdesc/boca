@@ -188,9 +188,10 @@ if(isset($_POST['Submit5']) && $_POST['Submit5']=='Send') {
 if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) && 
     isset($_POST["problemname"])) {
 	$problem_number = trim($_POST["problemnumber"]);
-	if(!is_numeric($problem_number)) {
+	if(!ctype_digit($problem_number)) {
+		// só inteiro: "2.5" ou "2e0" virariam 2 e sobrescreveriam o problema 2
 		$_POST["confirmation"]='';
-		MSGError('Problem number must be numeric. Use the numeric index, for example 2 for problem B.');
+		MSGError('Problem number must be an integer. Use the numeric index, for example 2 for problem B.');
 	} else if(strpos(trim($_POST["problemname"]),' ')!==false) {
 		$_POST["confirmation"]='';
 		MSGError('Problem short name cannot have spaces');

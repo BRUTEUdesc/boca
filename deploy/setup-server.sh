@@ -39,6 +39,8 @@ post_max_size = 400M
 memory_limit = 1536M
 max_execution_time = 300
 output_buffering = 4096
+; só aceita id de sessão criado pelo próprio PHP (evita fixação de sessão)
+session.use_strict_mode = 1
 EOF
 )
 
@@ -98,8 +100,12 @@ systemctl enable -q --now "php$PHPV-fpm"
 systemctl reload "php$PHPV-fpm"
 
 log "apache -> php$PHPV-fpm"
-# rewrite/ssl/proxy_http/proxy_wstunnel: vhost do BOCA (redirect HTTPS e proxy do /animeitor/)
-a2enmod -q proxy_fcgi setenvif rewrite ssl proxy_http proxy_wstunnel >/dev/null
+# rewrite/ssl/proxy_http/proxy_wstunnel: vhost do BOCA (redirect HTTPS e proxy do /animeitor/);
+# headers: HSTS no vhost :443
+a2enmod -q proxy_fcgi setenvif rewrite ssl proxy_http proxy_wstunnel headers >/dev/null
+# banner sem versão do Apache/SO
+sed -i -E -e 's/^ServerTokens\s.*/ServerTokens Prod/' -e 's/^ServerSignature\s.*/ServerSignature Off/' \
+    /etc/apache2/conf-available/security.conf
 # mpm_event: mais processos/threads ociosos para aguentar o pico do início da prova
 sed -i -E \
     -e 's/^(\s*)StartServers\s.*/\1StartServers            4/' \
@@ -246,6 +252,40 @@ else
     echo "    ATENÇÃO: $BOCADIR não existe (clonar o repo lá e rodar de novo)"
 fi
 
+log "atualização automática sem reiniciar serviço crítico"
+# unattended-upgrades não atualiza PostgreSQL, Apache e PHP (reiniciariam no meio da prova): atualizar à
+# mão, fora de prova (apt upgrade). O needrestart não reinicia esses serviços depois de atualizar uma
+# biblioteca (libssl, libc...): ver pendentes com "needrestart -r l" e reiniciar fora de prova.
+put /etc/apt/apt.conf.d/51boca-unattended-upgrades "// BOCA (deploy/setup-server.sh): fora da atualização automática; atualizar à mão, fora de prova
+Unattended-Upgrade::Package-Blacklist {
+    \"postgresql\";
+    \"apache2\";
+    \"libapache2\";
+    \"php\";
+};"
+if [ -d /etc/needrestart/conf.d ]; then
+    put /etc/needrestart/conf.d/boca.conf "# BOCA (deploy/setup-server.sh): não reiniciar sozinho; reiniciar fora de prova
+\$nrconf{override_rc}->{qr(^postgresql)} = 0;
+\$nrconf{override_rc}->{qr(^apache2)} = 0;
+\$nrconf{override_rc}->{qr(^php.*-fpm)} = 0;"
+fi
+
+log "sobras do pacote antigo e safe.directory"
+# boca-common (estado rc): cron de minuto em minuto para /usr/sbin/boca-fixssh, que não existe mais;
+# boca-autojudge1/2 liam o IP do AJ de /var/www/html (de www-data). Não usar "dpkg --purge boca-common":
+# apagaria o conf.php.
+for f in /etc/cron.d/cron-boca-fixssh /usr/sbin/boca-autojudge1 /usr/sbin/boca-autojudge2; do
+    if [ -e "$f" ]; then
+        rm -f "$f"
+        echo "    removido $f"
+    fi
+done
+# /var/www/boca-problem-builder é de www-data: root não deve rodar git lá (hooks/fsmonitor de www-data)
+if [ -f /root/.gitconfig ] &&
+    git config --file /root/.gitconfig --get-all safe.directory | grep -qxF /var/www/boca-problem-builder; then
+    git config --file /root/.gitconfig --fixed-value --unset-all safe.directory /var/www/boca-problem-builder
+fi
+
 log "logrotate do webcast.log e sysctl"
 # webcast.log cresce a cada consulta do animeitor
 put /etc/logrotate.d/boca-webcast "# webcast.log do BOCA (escrito por src/admin/report/webcast.php a cada consulta do animeitor)
@@ -276,6 +316,9 @@ for u in /autojudgeip/ip_aj1 /test.php /private/conf.php; do
         echo "    ATENÇÃO: https://localhost$u responde 200 (o vhost devia negar; ver deploy/apache/boca.conf)"
     fi
 done
+hdrs=$(curl -skI -m 15 https://localhost/ || true)
+grep -qi '^strict-transport-security:' <<<"$hdrs" ||
+    echo "    ATENÇÃO: sem HSTS no :443 (ver deploy/apache/boca.conf)"
 php -r "echo '    upload_max_filesize CLI: '.ini_get('upload_max_filesize').PHP_EOL;"
 old=$(pg_lsclusters -h | awk -v v="$PGV" '$1!=v && $4 ~ /^online/ {print $1"/"$2" ("$4")"}')
 if [ -n "$old" ]; then
