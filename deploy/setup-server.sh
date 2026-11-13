@@ -58,16 +58,33 @@ done
 POOL=/etc/php/$PHPV/fpm/pool.d/www.conf
 sed -i -E \
     -e 's/^pm\.max_children = .*/pm.max_children = 20/' \
-    -e 's/^pm\.start_servers = .*/pm.start_servers = 2/' \
-    -e 's/^pm\.min_spare_servers = .*/pm.min_spare_servers = 1/' \
-    -e 's/^pm\.max_spare_servers = .*/pm.max_spare_servers = 3/' "$POOL"
+    -e 's/^pm\.start_servers = .*/pm.start_servers = 4/' \
+    -e 's/^pm\.min_spare_servers = .*/pm.min_spare_servers = 2/' \
+    -e 's/^pm\.max_spare_servers = .*/pm.max_spare_servers = 6/' "$POOL"
+# cookie de sessão do PHP só por HTTPS, sem acesso por JS e SameSite=Lax
+hdr=0
+for kv in "php_admin_value[session.cookie_samesite] = Lax" \
+    "php_admin_flag[session.cookie_secure] = on" "php_admin_flag[session.cookie_httponly] = on"; do
+    k=${kv%% *}
+    grep -v '^\s*;' "$POOL" | grep -qF -- "$k" && continue
+    [ "$hdr" = 1 ] || printf '\n; BOCA (deploy/setup-server.sh): cookie de sessão\n' >> "$POOL"
+    hdr=1
+    printf '%s\n' "$kv" >> "$POOL"
+done
 php-fpm"$PHPV" -t 2>/dev/null
 systemctl enable -q --now "php$PHPV-fpm"
 # reload (graceful) aplica php.ini e pool sem derrubar requisições em andamento
 systemctl reload "php$PHPV-fpm"
 
 log "apache -> php$PHPV-fpm"
-a2enmod -q proxy_fcgi setenvif >/dev/null
+# rewrite/ssl/proxy_http/proxy_wstunnel: vhost do BOCA (redirect HTTPS e proxy do /animeitor/)
+a2enmod -q proxy_fcgi setenvif rewrite ssl proxy_http proxy_wstunnel >/dev/null
+# mpm_event: mais processos/threads ociosos para aguentar o pico do início da prova
+sed -i -E \
+    -e 's/^(\s*)StartServers\s.*/\1StartServers            4/' \
+    -e 's/^(\s*)MinSpareThreads\s.*/\1MinSpareThreads         75/' \
+    -e 's/^(\s*)MaxSpareThreads\s.*/\1MaxSpareThreads         250/' \
+    /etc/apache2/mods-available/mpm_event.conf
 for c in /etc/apache2/conf-enabled/php*-fpm.conf; do
     [ -e "$c" ] || continue
     n=$(basename "$c" .conf)
