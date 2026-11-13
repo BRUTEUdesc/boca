@@ -524,6 +524,8 @@ function DBGiveUpRunAutojudging($contest, $site, $number, $ip="", $ans="", $from
 	DBExec($c, "begin work", "DBGiveUpRunAutojudging(transaction)");
 	$sql = "select * from runtable as r " .
 		"where r.contestnumber=$contest and r.runnumber=$number and r.runsitenumber=$site";
+	// chamado por um autojudge: so desiste se a run ainda for dele (pode ter sido pega de novo por outro)
+	if($ip!="") $sql .= " and r.autoip='$ip'";
 	$r = DBExec ($c, $sql . " for update", "DBGiveUpRunAutoJudging(get run for update)");
 	$n = DBnlines($r);
 	if ($n != 1) {
