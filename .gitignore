@@ -55,9 +55,7 @@ debian/
 # Ignorar dependências instaladas com Composer
 /vendor/
 
-# Ignorar arquivos de controle do Composer
-composer.lock
-composer.json
+# composer.json/composer.lock são versionados (phpdotenv do conf.php): composer install --no-dev
 
 # Ignorar .env
 .env
