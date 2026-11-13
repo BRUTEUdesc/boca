@@ -102,7 +102,7 @@ apt-mark manual "${HOST_PACKAGES[@]}" >/dev/null
 
 log "vendor (phpdotenv)"
 if [ ! -f "$BOCADIR/vendor/autoload.php" ]; then
-    (cd "$BOCADIR" && COMPOSER_ALLOW_SUPERUSER=1 composer require -q --no-interaction vlucas/phpdotenv:^5.6)
+    (cd "$BOCADIR" && COMPOSER_ALLOW_SUPERUSER=1 composer install -q --no-interaction --no-dev)
 fi
 php -r "require '$BOCADIR/vendor/autoload.php'; exit(class_exists('Dotenv\\Dotenv') ? 0 : 1);"
 
