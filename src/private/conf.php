@@ -58,6 +58,9 @@ $conf["key"]=$_ENV["BOCA_KEY"] ?? null;
   // The real purpose of it is only to differentiate between
   // autojudges when multiple computers are used as autojudges
   $conf["ip"]='local';
+  // BRUTE: cada autojudge precisa de um valor distinto (BOCA_AUTOJUDGE_IP no .env, ate 20 caracteres)
+  if(isset($_ENV["BOCA_AUTOJUDGE_IP"]) && preg_match('/^[A-Za-z0-9._:-]{1,20}$/', $_ENV["BOCA_AUTOJUDGE_IP"]))
+    $conf["ip"]=$_ENV["BOCA_AUTOJUDGE_IP"];
 
   return $conf;
 }
