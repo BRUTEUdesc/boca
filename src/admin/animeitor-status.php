@@ -1,13 +1,16 @@
 <?php
 session_start();
+require_once("../globals.php");
+require_once("../db.php");
 
-// Validação leve de autenticação (opcional)
-if (!isset($_SESSION["usertable"]) || $_SESSION["usertable"]["usertype"] !== 'admin') {
+// Mesma checagem das outras páginas do admin (sessão válida no banco + tipo admin)
+if (!ValidSession() || $_SESSION["usertable"]["usertype"] !== 'admin') {
     http_response_code(403);
     header('Content-Type: application/json');
     echo json_encode(["status" => "Unauthorized", "color" => "gray"]);
     exit;
 }
+session_write_close();
 
 function getAnimeitorStatus()
 {
