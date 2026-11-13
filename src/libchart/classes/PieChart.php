@@ -36,6 +36,11 @@ class PieChart extends Chart
         * @param	integer		height of the image
     */
 
+    public function __construct(...$args)
+    {
+        $this->PieChart(...$args);
+    }
+
     public function PieChart($width = 600, $height = 250)
     {
         parent::Chart($width, $height);
@@ -76,8 +81,8 @@ class PieChart extends Chart
 
     public function sortPie($v1, $v2)
     {
-        return $v1[0] == $v2[0] ? 0 :
-            $v1[0] > $v2[0] ? -1 :
+        return ($v1[0] == $v2[0] ? 0 :
+            $v1[0] > $v2[0]) ? -1 :
             1;
     }
 

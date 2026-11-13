@@ -37,6 +37,11 @@ class Point
     * @param	array		color R,G,B
     */
 
+    public function __construct(...$args)
+    {
+        $this->Point(...$args);
+    }
+
     public function Point($x, $y, $c = null)
     {
         $this->x = $x;

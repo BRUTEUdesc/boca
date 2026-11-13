@@ -44,6 +44,11 @@ class Chart
         * @param	integer		height of the image
     */
 
+    public function __construct(...$args)
+    {
+        $this->chart(...$args);
+    }
+
     public function chart($width, $height)
     {
         $this->width = $width;
