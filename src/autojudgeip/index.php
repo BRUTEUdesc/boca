@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Token opcional: se BOCA_AJ_TOKEN estiver no .env, passa a ser obrigatório.
+    // Token obrigatório (BOCA_AJ_TOKEN no .env). Sem token configurado, recusa (falha fechada).
     $env_token = getenv('BOCA_AJ_TOKEN') ?: '';
     if ($env_token === '' && is_readable('/var/www/boca/.env')) {
         foreach (file('/var/www/boca/.env', FILE_IGNORE_NEW_LINES) as $line) {
@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
-    if ($env_token !== '' && !hash_equals($env_token, (string) ($_POST['token'] ?? ''))) {
+    if ($env_token === '' || !hash_equals($env_token, (string) ($_POST['token'] ?? ''))) {
         http_response_code(403);
         echo "Token inválido.";
         exit;
