@@ -1,5 +1,4 @@
 <?php
-
 ////////////////////////////////////////////////////////////////////////////////
 //BOCA Online Contest Administrator
 //    Copyright (C) 2003-2012 by BOCA Development Team (bocasystem@gmail.com)
@@ -19,3 +18,4 @@
 // Last modified 05/aug/2012 by cassio@ime.usp.br
 require('header.php');
 require('../optionlower.php');
+?>

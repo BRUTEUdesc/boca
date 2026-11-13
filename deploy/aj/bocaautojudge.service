@@ -3,6 +3,8 @@ Description=Boca AutoJudge
 After=network-online.target boca-jail-net.service
 Wants=network-online.target
 Requires=boca-jail-net.service
+# o diretório de trabalho precisa estar montado com nosymfollow (home-bocajail-tmp.mount)
+RequiresMountsFor=/home/bocajail/tmp
 
 [Service]
 ExecStart=/usr/sbin/run_aj

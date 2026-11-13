@@ -1,8 +1,13 @@
 <?php
 
 require('header.php');
+require_once('csrf.php');
 
 if (isset($_POST["confirmation"]) && $_POST["confirmation"] == "confirm") {
+    if (!csrfValid()) {
+        MSGError("Request refused: invalid or expired form token. Reload the page and try again.");
+        ForceLoad("scores.php");
+    }
     // Update score.sep file
     $score_content = $_POST["score_content"];
     $score_filename = $locr . "/private/score.sep";
@@ -40,6 +45,7 @@ if (isset($_POST["confirmation"]) && $_POST["confirmation"] == "confirm") {
 <h2>Edit Score Separation Files</h2>
 <form name="form1" method="post" action="scores.php">
   <input type=hidden name="confirmation" value="noconfirm" />
+  <?php echo csrfField(); ?>
   <script language="javascript">
     function conf() {
       if (confirm("Confirm changes to both files?")) {

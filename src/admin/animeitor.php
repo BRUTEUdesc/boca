@@ -16,6 +16,7 @@
 //    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////////////////
 require('header.php');
+require_once('csrf.php');
 
 if (($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null) {
     ForceLoad("../index.php");
@@ -33,6 +34,14 @@ function getCurrentContest()
         }
     }
     return 1;
+}
+
+// Toda acao POST desta pagina exige o token CSRF da sessao
+if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
+    (isset($_POST["Submit3"]) || isset($_POST["command"]) || isset($_POST['delete']) || isset($_POST['do_upload'])) &&
+    !csrfValid()) {
+    MSGError("Request refused: invalid or expired form token. Reload the page and try again.");
+    ForceLoad("animeitor.php");
 }
 
 if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && $_POST["confirmation"] == "contest_confirm") {
@@ -207,6 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_upload'])) {
 
 <form name="form1" enctype="multipart/form-data" method="post" action="animeitor.php">
   <input type=hidden name="confirmation" value="noconfirm" />
+  <?php echo csrfField(); ?>
   <script language="javascript">
     function conf1() {
       if (confirm("Confirm?")) {
@@ -400,6 +410,7 @@ foreach (glob("$soundsDir/*.mp3") as $f) {
 
 <center>
 <form method="post" enctype="multipart/form-data">
+  <?php echo csrfField(); ?>
   <table class="media-table">
     <tr>
       <th>Team</th>

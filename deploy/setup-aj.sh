@@ -1,18 +1,26 @@
 #!/bin/bash
 # Setup/ajuste de um autojudge do BOCA (fork BRUTEUdesc) em Ubuntu.
 #
+# NÃO RODE COM CONTEST EM ANDAMENTO: instala/atualiza pacotes e reinicia serviços (o setup-aj.sh
+# para o autojudge e atualiza o jail, o que pode trocar a versão dos compiladores).
+#
 # Idempotente: pode rodar quantas vezes quiser. Use:
 #   - num autojudge novo (depois de clonar o repo em /var/www/boca e criar o .env);
 #   - depois de todo do-release-upgrade (o jail é refeito na versão nova do Ubuntu).
 #
 #   sudo deploy/setup-aj.sh
 #
-# O .env do autojudge precisa de BOCA_DB_HOST (IP do servidor BOCA) e BOCA_DB_PASS,
-# BOCA_DB_SUPERPASS, BOCA_BASE_PASS, BOCA_KEY iguais aos do servidor.
+# O .env do autojudge só precisa de BOCA_DB_HOST (IP do servidor BOCA) e BOCA_DB_PASS (igual ao do
+# servidor). Não copie BOCA_DB_SUPERPASS, BOCA_BASE_PASS nem BOCA_KEY: o autojudge não os usa e esta
+# máquina roda código dos times. BOCA_AUTOJUDGE_IP é o identificador deste AJ no BOCA (aj1, aj2...;
+# distinto por AJ): se faltar no .env, é acrescentado a partir da variável de ambiente
+# BOCA_AUTOJUDGE_IP ou do hostname (brute-AJ1 -> aj1); se já existir, não é alterado.
+# O send_ip_to_boca precisa do token em /root/.boca_aj_token (o mesmo do servidor).
 #
 # O que faz: pacotes do host, vendor (phpdotenv), .env 600, /etc/boca.conf, jail em /home/bocajail
 # (debootstrap da mesma versão do host, com gcc/g++/OpenJDK/Kotlin/Python), safeexec, bloqueio de
-# rede do uid bocajail, services (bocaautojudge, send_ip_to_boca) e um teste das 5 linguagens.
+# rede do uid bocajail, /home/bocajail/tmp com nosymfollow, services (bocaautojudge, send_ip_to_boca)
+# e um teste das 5 linguagens (que roda dentro desse mount).
 # Não liga o autojudge se ele estiver desligado (só reinicia se já estiver habilitado).
 # Lógica de julgamento: igual ao upstream (src/private/autojudging.php + scripts dos problemas).
 set -euo pipefail
@@ -102,6 +110,29 @@ chown root:root "$BOCADIR/.env"
 chmod 600 "$BOCADIR/.env"
 DBHOST=$(sed -nE 's/^BOCA_DB_HOST=["'\'']?([^"'\'' ]*).*/\1/p' "$BOCADIR/.env" | tail -1)
 [ -n "$DBHOST" ] || { echo "falta BOCA_DB_HOST no $BOCADIR/.env"; exit 1; }
+if ! grep -qE '^BOCA_AUTOJUDGE_IP=' "$BOCADIR/.env"; then
+    ajid=${BOCA_AUTOJUDGE_IP:-$(hostname | sed -nE 's/^brute-AJ([0-9]+)$/aj\1/p')}
+    if [[ "$ajid" =~ ^[A-Za-z0-9._-]+$ ]]; then
+        # garante o \n final antes de acrescentar
+        [ -z "$(tail -c1 "$BOCADIR/.env")" ] || echo >> "$BOCADIR/.env"
+        printf 'BOCA_AUTOJUDGE_IP=%s\n' "$ajid" >> "$BOCADIR/.env"
+        log "BOCA_AUTOJUDGE_IP=$ajid acrescentado ao .env"
+    else
+        echo "AVISO: falta BOCA_AUTOJUDGE_IP no .env (ex.: aj1); rode com BOCA_AUTOJUDGE_IP=ajN $0" >&2
+    fi
+fi
+# o banco só aceita o AJ com certificado de cliente (deploy/pg-client-cert.sh no servidor)
+if [ -f /root/.postgresql/postgresql.crt ] && [ -f /root/.postgresql/postgresql.key ]; then
+    chmod 600 /root/.postgresql/postgresql.key
+else
+    echo "AVISO: falta /root/.postgresql/postgresql.{crt,key}; sem eles o autojudge não conecta no banco" >&2
+    echo "       (no servidor: deploy/pg-client-cert.sh ajN e copie os dois arquivos para cá)" >&2
+fi
+for v in BOCA_DB_SUPERPASS BOCA_BASE_PASS BOCA_KEY; do
+    grep -qE "^$v=" "$BOCADIR/.env" &&
+        echo "AVISO: $v está no .env do autojudge, que não o usa; pode ser removido" >&2
+done
+[ -f /root/.boca_aj_token ] || echo "AVISO: falta /root/.boca_aj_token (send_ip_to_boca vai falhar)" >&2
 printf 'bdserver=%s\nbocadir=%s\nbdcreated=y\n' "$DBHOST" "$BOCADIR" > /etc/boca.conf
 # arquivos privados do BOCA não podem ser legíveis pelo bocajail
 chmod -R go-rwx "$BOCADIR/src/private" 2>/dev/null || true
@@ -122,7 +153,13 @@ if [ "$JAILCODE" != "$CODENAME" ]; then
         rm -rf --one-file-system "$JAIL.new"
     fi
     log "debootstrap $CODENAME em $JAIL.new (demora)"
-    debootstrap --variant=minbase "$CODENAME" "$JAIL.new" "$MIRROR" >/dev/null
+    # o IPv6 dos AJs é instável e o wget do debootstrap (ao contrário do apt) não cai para IPv4:
+    # fica minutos em SYN-SENT por pacote. Força IPv4 só neste wget, sem mexer no /root/.wgetrc.
+    t=$(mktemp -d)
+    printf 'prefer-family = IPv4\n' > "$t/wgetrc"
+    WGETRC=$t/wgetrc debootstrap --variant=minbase "$CODENAME" "$JAIL.new" "$MIRROR" >/dev/null
+    rm -rf "$t"
+    t=""
     umount_under "$JAIL.new"
     if [ -e "$JAIL" ]; then
         old="$JAIL.old-${JAILCODE:-x}-$(date +%Y%m%d%H%M)"
@@ -189,7 +226,7 @@ log "services"
 install -m 0755 "$REPO/deploy/aj/run_aj" /usr/sbin/run_aj
 install -m 0700 "$REPO/tools/boca-autojudge.sh" /usr/sbin/boca-autojudge
 install -m 0700 "$REPO/deploy/aj/send_ip_to_boca" /usr/sbin/send_ip_to_boca
-for u in bocaautojudge.service send_ip_to_boca.service send_ip_to_boca.timer; do
+for u in bocaautojudge.service send_ip_to_boca.service send_ip_to_boca.timer home-bocajail-tmp.mount; do
     install -m 0644 "$REPO/deploy/aj/$u" /etc/systemd/system/
 done
 # unidades antigas (antes ficavam em /root/send_ip_to_boca + reload-send_ip_to_boca.service)
@@ -197,6 +234,13 @@ if [ -f /etc/systemd/system/reload-send_ip_to_boca.service ]; then
     rm -f /etc/systemd/system/reload-send_ip_to_boca.service
 fi
 systemctl daemon-reload
+# diretório de trabalho do autojudge com nosymfollow: o root não segue symlink criado pelo time
+# (ver deploy/aj/home-bocajail-tmp.mount, cujo nome fixa o caminho /home/bocajail/tmp)
+[ "$JAIL" = /home/bocajail ] || { echo "home-bocajail-tmp.mount assume JAIL=/home/bocajail"; exit 1; }
+systemctl enable -q home-bocajail-tmp.mount
+systemctl start home-bocajail-tmp.mount
+findmnt -rn -o OPTIONS -M "$JAIL/tmp" | grep -qw nosymfollow ||
+    { echo "$JAIL/tmp não ficou montado com nosymfollow"; exit 1; }
 systemctl enable -q boca-jail-net.service send_ip_to_boca.timer
 systemctl start boca-jail-net.service send_ip_to_boca.timer
 # a unit antiga tinha RemainAfterExit: a instância dela fica "active (exited)" e o timer novo não

@@ -1,219 +1,218 @@
 <?php
+	/** Libchart - PHP chart library
+	*	
+	* Copyright (C) 2005-2006 Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
+	* 	
+	* This library is free software; you can redistribute it and/or
+	* modify it under the terms of the GNU Lesser General Public
+	* License as published by the Free Software Foundation; either
+	* version 2.1 of the License, or (at your option) any later version.
+	* 
+	* This library is distributed in the hope that it will be useful,
+	* but WITHOUT ANY WARRANTY; without even the implied warranty of
+	* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	* Lesser General Public License for more details.
+	* 
+	* You should have received a copy of the GNU Lesser General Public
+	* License along with this library; if not, write to the Free Software
+	* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+	* 
+	*/
+	
+	/*! \mainpage Libchart
+	*
+	* This is the reference API, automatically compiled by <a href="http://www.stack.nl/~dimitri/doxygen/">Doxygen</a>.
+        * You can find here information that is not covered by the <a href="../samplecode/">tutorial</a>.
+	*
+	*/
 
-/** Libchart - PHP chart library
-*
-* Copyright (C) 2005-2006 Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
-*
-* This library is free software; you can redistribute it and/or
-* modify it under the terms of the GNU Lesser General Public
-* License as published by the Free Software Foundation; either
-* version 2.1 of the License, or (at your option) any later version.
-*
-* This library is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-* Lesser General Public License for more details.
-*
-* You should have received a copy of the GNU Lesser General Public
-* License along with this library; if not, write to the Free Software
-* Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-*
-*/
+	/**
+	* Base chart class
+	*
+	* @author   Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
+	* @abstract
+	*/
 
-/*! \mainpage Libchart
-*
-* This is the reference API, automatically compiled by <a href="http://www.stack.nl/~dimitri/doxygen/">Doxygen</a>.
-    * You can find here information that is not covered by the <a href="../samplecode/">tutorial</a>.
-*
-*/
+	class Chart
+	{
+		/**
+		* Creates a new chart
+		*
+		* @access	protected
+    		* @param	integer		width of the image
+    		* @param	integer		height of the image
+		*/
+		
+		public function __construct(...$args)
+		{
+			$this->chart(...$args);
+		}
 
-/**
-* Base chart class
-*
-* @author   Jean-Marc Trémeaux (jm.tremeaux at gmail.com)
-* @abstract
-*/
+		public function chart($width, $height)
+		{
+			$this->width = $width;
+			$this->height = $height;
 
-class Chart
-{
-    /**
-    * Creates a new chart
-    *
-    * @access	protected
-        * @param	integer		width of the image
-        * @param	integer		height of the image
-    */
+			$this->reset();
+		}
 
-    public function __construct(...$args)
-    {
-        $this->chart(...$args);
-    }
+		/**
+		* Initialize the chart
+		*
+		* @access	private
+		*/
+		
+		public function reset()
+		{
+			$this->text = new Text();		
+			$this->point = array();
 
-    public function chart($width, $height)
-    {
-        $this->width = $width;
-        $this->height = $height;
+			unset($this->lowerBound);
+			unset($this->upperBound);
 
-        $this->reset();
-    }
+			$this->setTitle("Untitled chart");
+			$this->setLogo(dirname(__FILE__) . "/../images/PoweredBy.png");
+		}
 
-    /**
-    * Initialize the chart
-    *
-    * @access	private
-    */
+		/**
+		* Add a new sampling point to the chart
+		*
+		* @access	public
+		* @param	Point		sampling point to add
+		*/
+		
+		public function addPoint($point)
+		{
+			array_push($this->point, $point);
+		}
 
-    public function reset()
-    {
-        $this->text = new Text();
-        $this->point = array();
+		/**
+		* Sets the title
+		*
+		* @access	public
+		* @param	string		new title
+		*/
+		
+		public function setTitle($title)
+		{
+			$this->title = $title;
+		}
 
-        unset($this->lowerBound);
-        unset($this->upperBound);
+		/**
+		* Sets the logo image file name
+		*
+		* @access	public
+		* @param	string		new logo image file name
+		*/
+		
+		public function setLogo($logoFileName)
+		{
+			$this->logoFileName = $logoFileName;
+		}
 
-        $this->setTitle("Untitled chart");
-        $this->setLogo(dirname(__FILE__) . "/../images/PoweredBy.png");
-    }
+		/**
+		* Print the title to the image
+		*
+		* @access	private
+		*/
+		
+		public function printTitle()
+		{
+			$this->text->printCentered($this->img, ($this->labelMarginTop + $this->margin) / 2, $this->textColor, $this->title, $this->text->fontCondensedBold);
+		}
 
-    /**
-    * Add a new sampling point to the chart
-    *
-    * @access	public
-    * @param	Point		sampling point to add
-    */
+		/**
+		* Print the logo image to the image
+		*
+		* @access	private
+		*/
+		
+		public function printLogo()
+		{
+			@$logoImage = imageCreateFromPNG($this->logoFileName);
 
-    public function addPoint($point)
-    {
-        array_push($this->point, $point);
-    }
+			if($logoImage)
+				imagecopymerge($this->img, $logoImage, 2*$this->margin, $this->margin, 0, 0, imagesx($logoImage), imagesy($logoImage), 100);
+		}
 
-    /**
-    * Sets the title
-    *
-    * @access	public
-    * @param	string		new title
-    */
+		/**
+		* Set the outer margin
+		*
+		* @access	public
+		* @param	integer		outer margin value in pixels
+		*/
+		
+		public function setMargin($margin)
+		{
+			$this->margin = $margin;
+		}
 
-    public function setTitle($title)
-    {
-        $this->title = $title;
-    }
+		/**
+		* Set the label left margin
+		*
+		* @access	public
+		* @param	integer		label left margin value in pixels
+		*/
+		
+		public function setLabelMarginLeft($labelMarginLeft)
+		{
+			$this->labelMarginLeft = $labelMarginLeft;
+		}
 
-    /**
-    * Sets the logo image file name
-    *
-    * @access	public
-    * @param	string		new logo image file name
-    */
+		/**
+		* Set the label right margin
+		*
+		* @access	public
+		* @param	integer		label right margin value in pixels
+		*/
+		
+		public function setLabelMarginRight($labelMarginRight)
+		{
+			$this->labelMarginRight = $labelMarginRight;
+		}
 
-    public function setLogo($logoFileName)
-    {
-        $this->logoFileName = $logoFileName;
-    }
+		/**
+		* Set the label top margin
+		*
+		* @access	public
+		* @param	integer		label top margin value in pixels
+		*/
+		
+		public function setLabelMarginTop($labelMarginTop)
+		{
+			$this->labelMarginTop = $labelMarginTop;
+		}
 
-    /**
-    * Print the title to the image
-    *
-    * @access	private
-    */
+		/**
+		* Set the label bottom margin
+		*
+		* @access	public
+		* @param	integer		label bottom margin value in pixels
+		*/
+		
+		public function setLabelMarginBottom($labelMarginBottom)
+		{
+			$this->labelMarginBottom = $labelMarginBottom;
+		}
 
-    public function printTitle()
-    {
-        $this->text->printCentered($this->img, ($this->labelMarginTop + $this->margin) / 2, $this->textColor, $this->title, $this->text->fontCondensedBold);
-    }
+		/**
+		* Creates and initialize the image
+		*
+		* @access	protected
+		*/
+		
+		public function createImage()
+		{
+			$this->img = imagecreatetruecolor($this->width, $this->height);
+			
+			$this->primitive = new Primitive($this->img);
 
-    /**
-    * Print the logo image to the image
-    *
-    * @access	private
-    */
+			$this->backGroundColor = new Color(255, 255, 255);
+			$this->textColor = new Color(0, 0, 0);
 
-    public function printLogo()
-    {
-        @$logoImage = imageCreateFromPNG($this->logoFileName);
+			// White background
 
-        if ($logoImage) {
-            imagecopymerge($this->img, $logoImage, 2 * $this->margin, $this->margin, 0, 0, imagesx($logoImage), imagesy($logoImage), 100);
-        }
-    }
-
-    /**
-    * Set the outer margin
-    *
-    * @access	public
-    * @param	integer		outer margin value in pixels
-    */
-
-    public function setMargin($margin)
-    {
-        $this->margin = $margin;
-    }
-
-    /**
-    * Set the label left margin
-    *
-    * @access	public
-    * @param	integer		label left margin value in pixels
-    */
-
-    public function setLabelMarginLeft($labelMarginLeft)
-    {
-        $this->labelMarginLeft = $labelMarginLeft;
-    }
-
-    /**
-    * Set the label right margin
-    *
-    * @access	public
-    * @param	integer		label right margin value in pixels
-    */
-
-    public function setLabelMarginRight($labelMarginRight)
-    {
-        $this->labelMarginRight = $labelMarginRight;
-    }
-
-    /**
-    * Set the label top margin
-    *
-    * @access	public
-    * @param	integer		label top margin value in pixels
-    */
-
-    public function setLabelMarginTop($labelMarginTop)
-    {
-        $this->labelMarginTop = $labelMarginTop;
-    }
-
-    /**
-    * Set the label bottom margin
-    *
-    * @access	public
-    * @param	integer		label bottom margin value in pixels
-    */
-
-    public function setLabelMarginBottom($labelMarginBottom)
-    {
-        $this->labelMarginBottom = $labelMarginBottom;
-    }
-
-    /**
-    * Creates and initialize the image
-    *
-    * @access	protected
-    */
-
-    public function createImage()
-    {
-        $this->img = imagecreatetruecolor($this->width, $this->height);
-
-        $this->primitive = new Primitive($this->img);
-
-        $this->backGroundColor = new Color(255, 255, 255);
-        $this->textColor = new Color(0, 0, 0);
-
-        // White background
-
-        imagefilledrectangle($this->img, 0, 0, $this->width - 1, $this->height - 1, $this->backGroundColor->getColor($this->img));
-    }
-}
+			imagefilledrectangle($this->img, 0, 0, $this->width - 1, $this->height - 1, $this->backGroundColor->getColor($this->img));
+		}
+	}
+?>

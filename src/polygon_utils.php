@@ -37,12 +37,19 @@ function convert_polygon_to_boca($inputfilepath, $letter)
     $JAVA_TL_FACTOR = 3;
     $PYTHON_TL_FACTOR = 3;
 
-    $command = "cd $baseDir && python3 make_from_full_package.py $letterArg $tempZip $JAVA_TL_FACTOR $PYTHON_TL_FACTOR --no-backup --zip-only > " . escapeshellarg($logFile) . " 2>&1";
-    shell_exec($command);
-    @unlink($inputfilepath . ".zip");
-
     $outputPath = "$baseDir/zip_packages/Problem_" . trim($letter) . ".zip";
     $outputFilename = "Problem_" . trim($letter) . ".zip";
+    // apaga o zip de uma conversao anterior, para nunca importar um pacote velho se esta falhar
+    @unlink($outputPath);
+
+    $command = "cd $baseDir && python3 make_from_full_package.py $letterArg $tempZip $JAVA_TL_FACTOR $PYTHON_TL_FACTOR --no-backup --zip-only > " . escapeshellarg($logFile) . " 2>&1";
+    $rc = -1;
+    exec($command, $cmdOutput, $rc);
+    @unlink($inputfilepath . ".zip");
+
+    if ($rc !== 0) {
+        return false;
+    }
 
     return file_exists($outputPath) ? array($outputPath, $outputFilename) : false;
 }
