@@ -69,7 +69,8 @@ if($i>=count($wcdata)) {
 //cleardir($webcastdir);
 @mkdir($webcastdir);
 
-$ANIMEITOR_CONTEST = 7;
+$ANIMEITOR_CONTEST = (int)trim(@file_get_contents($webcastparentdir . $ds . 'animeitor.contest'));
+if($ANIMEITOR_CONTEST <= 0) $ANIMEITOR_CONTEST = 7;
 
 $contest = $ANIMEITOR_CONTEST; //$_SESSION["usertable"]["contestnumber"];
 $site = 1; //$_SESSION["usertable"]["usersitenumber"];
