@@ -73,7 +73,12 @@ if (isset($_COOKIE['biscoitobocabombonera'])) {
     }
 }
 if (count($coo) != 2) {
-    setcookie('biscoitobocabombonera', time() . '-' . myhash(time() . rand() . time() . rand()), time() + 240 * 3600);
+    setcookie('biscoitobocabombonera', time() . '-' . myhash(time() . rand() . time() . rand()), [
+        'expires' => time() + 240 * 3600,
+        'secure' => (!empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) != 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 }
 
 ob_end_flush();
