@@ -7,8 +7,11 @@
 #
 #   sudo deploy/setup-server.sh
 #
-# Não faz: clonar o código, criar o banco, migrar cluster do PostgreSQL entre versões
-# (veja o fim da saída, que avisa quando há cluster antigo para migrar).
+# O vhost do Apache (deploy/apache/boca.conf) só é instalado num servidor que ainda não tem site do
+# BOCA; o de um servidor em uso nunca é sobrescrito.
+#
+# Não faz: clonar o código, criar o banco, obter o certificado TLS, migrar cluster do PostgreSQL
+# entre versões (veja o fim da saída, que avisa quando há cluster antigo para migrar).
 set -euo pipefail
 
 # ---- configuração --------------------------------------------------------------------------
@@ -50,6 +53,7 @@ EOF
 
 [ "$(id -u)" = 0 ] || { echo "rode como root"; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
+REPO=$(cd "$(dirname "$0")/.." && pwd)
 log() { echo "==> $*"; }
 # grava $2 em $1 só se o conteúdo for outro (não mexe no mtime à toa)
 put() { [ "$(cat "$1" 2>/dev/null)" = "$2" ] || printf '%s\n' "$2" > "$1"; }
@@ -105,6 +109,21 @@ for c in /etc/apache2/conf-enabled/php*-fpm.conf; do
     [ "$n" = "php$PHPV-fpm" ] || a2disconf -q "$n"
 done
 a2enconf -q "php$PHPV-fpm"
+# vhost do BOCA: só num servidor que ainda não tem site apontando para $BOCADIR. O vhost de um
+# servidor em uso (certbot, ajustes à mão) nunca é sobrescrito; a verificação no fim confere o
+# hardening dele.
+if ! grep -RqsF -- "$BOCADIR" /etc/apache2/sites-enabled/; then
+    SITE=/etc/apache2/sites-available/000-boca-brute.conf
+    [ -e "$SITE" ] || install -m 0644 "$REPO/deploy/apache/boca.conf" "$SITE"
+    cert=$(awk '$1 == "SSLCertificateFile" {print $2; exit}' "$SITE")
+    if [ -f "$cert" ] && [ -f /etc/letsencrypt/options-ssl-apache.conf ]; then
+        a2ensite -q 000-boca-brute
+        log "site do BOCA habilitado ($SITE)"
+    else
+        echo "    ATENÇÃO: $SITE instalado mas NÃO habilitado: falta o certificado ($cert)"
+        echo "    obter com certbot (ex.: certbot certonly --apache -d <ServerName>) e rodar este script de novo"
+    fi
+fi
 apache_test=$(apache2ctl configtest 2>&1) || true
 if ! grep -q "Syntax OK" <<<"$apache_test"; then
     printf '%s\n' "$apache_test"
@@ -232,6 +251,13 @@ sysctl -q -p /etc/sysctl.d/60-arp-notify.conf
 log "verificação"
 code=$(curl -sk -o /dev/null -m 15 -w '%{http_code}' https://localhost/ || true)
 echo "    HTTPS local: $code"
+# hardening do vhost: nada disso pode ser servido
+for u in /autojudgeip/ip_aj1 /test.php /private/conf.php; do
+    code=$(curl -sk -o /dev/null -m 15 -w '%{http_code}' "https://localhost$u" || true)
+    if [ "$code" = 200 ]; then
+        echo "    ATENÇÃO: https://localhost$u responde 200 (o vhost devia negar; ver deploy/apache/boca.conf)"
+    fi
+done
 php -r "echo '    upload_max_filesize CLI: '.ini_get('upload_max_filesize').PHP_EOL;"
 old=$(pg_lsclusters -h | awk -v v="$PGV" '$1!=v && $4 ~ /^online/ {print $1"/"$2" ("$4")"}')
 if [ -n "$old" ]; then
