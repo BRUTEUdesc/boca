@@ -358,6 +358,9 @@ while(42) {
   @unlink('stderr');
   echo "Executing " . $ex . " at " . getcwd() . "\n";
   if(system($ex, $retval)===false) $retval=-1;
+  // o script de compilacao faz "chown bocajail ." aqui; o codigo do time (Java/Kotlin/Python enxergam
+  // este diretorio) nao pode trocar allout/allerr/team/compout por symlink
+  @chown($dir, "root");
 
   if(is_readable('stdout')) {
     system('/bin/echo ##### COMPILATION STDOUT: >> allerr');
