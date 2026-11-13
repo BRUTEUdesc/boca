@@ -46,7 +46,7 @@ EOF
 GIT_HOOK=$(cat <<'EOF'
 #!/bin/sh
 # instalado por deploy/setup-server.sh: o PHP roda como www-data e precisa escrever em arquivos
-# versionados (score.sep, webcast.sep, admin/report/webcast.php); git rodado como root os deixaria root.
+# gravaveis (score.sep, webcast.sep, animeitor.contest); git rodado como root os deixaria root.
 top=$(git rev-parse --show-toplevel) || exit 0
 find "$top" -path "$top/.git" -prune -o -path "$top/.env" -prune -o ! -user www-data -exec chown -h www-data:www-data {} +
 exit 0
@@ -214,6 +214,16 @@ for net in "${DB_LEGACY_NETS[@]}"; do
 done
 # aberto para qualquer IP: quem protege é o pg_hba (SSL + certificado de cliente + senha)
 grep -E "^5432/tcp\s+ALLOW\s+Anywhere" <<<"$ufw_st" >/dev/null || ufw allow 5432/tcp >/dev/null
+
+log "score.sep e webcast.sep (a partir do .sample, sem sobrescrever)"
+if [ -d "$BOCADIR/src/private" ]; then
+    for n in score.sep webcast.sep; do
+        if [ ! -e "$BOCADIR/src/private/$n" ] && [ -f "$BOCADIR/src/private/$n.sample" ]; then
+            cp "$BOCADIR/src/private/$n.sample" "$BOCADIR/src/private/$n"
+            chown www-data:www-data "$BOCADIR/src/private/$n"
+        fi
+    done
+fi
 
 log "dono dos arquivos em $BOCADIR e hooks do git"
 if [ -d "$BOCADIR" ]; then
