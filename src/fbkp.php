@@ -161,7 +161,7 @@ function DBNewBkp($contest, $site, $user, $filename, $filepath, $size)
         umask(0077);
         @mkdir("/tmp/boca");
             if (!move_uploaded_file ($filepath,
-            "/tmp/boca/contest${contest}.site${site}.run${n}.user${user}.problem${problem}.time${t}.${filename}"))
+            "/tmp/boca/contest{$contest}.site{$site}.run{$n}.user{$user}.problem{$problem}.time{$t}.{$filename}"))
             LOGLevel("Run not saved as file (run=$n,site=$site,contest=$contest", 1);
     */
 }

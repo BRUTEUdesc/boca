@@ -168,7 +168,7 @@ while (42) {
     if (DB_lo_export($contest, $c, $run["sourceoid"], $dir . $ds . $run["sourcename"]) === false) {
         DBExec($c, "rollback work", "Autojudging(rollback-source)");
         LogLevel("Autojudging: Unable to export source file (run=$number, site=$site, contest=$contest)", 1);
-        echo "Error exporting source file ${run["sourcename"]} (contest=$contest, site=$site, run=$number)\n";
+        echo "Error exporting source file {$run["sourcename"]} (contest=$contest, site=$site, run=$number)\n";
         DBGiveUpRunAutojudging($contest, $site, $number, $ip, "error: unable to export source file");
         DBExec($c, "commit", "Autojudging(exportcommit)");
         continue;
@@ -209,7 +209,7 @@ while (42) {
         if (DB_lo_export($contest, $c, $run["inputoid"], $dir . $ds . $run["inputname"]) === false) {
             DBExec($c, "rollback work", "Autojudging(rollback-input)");
             LogLevel("Autojudging: Unable to export problem package file (run=$number, site=$site, contest=$contest)", 1);
-            echo "Error exporting problem package file ${run["inputname"]} (contest=$contest, site=$site, run=$number)\n";
+            echo "Error exporting problem package file {$run["inputname"]} (contest=$contest, site=$site, run=$number)\n";
             DBGiveUpRunAutojudging($contest, $site, $number, $ip, "error: unable to export problem package file");
             continue;
         }

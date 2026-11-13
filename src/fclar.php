@@ -504,7 +504,7 @@ function DBNewClar($param, $c = null, $allowupdate = true)
        // por outro lado, garante que as coisas estao guardadas em arquivos fora do banco, caso haja outros problemas.
         umask(0077);
         @mkdir("/tmp/boca");
-            $fp = fopen("/tmp/boca/contest${contest}.site${site}.clar${n}.user${user}.problem${problem}.time${t}", "w");
+            $fp = fopen("/tmp/boca/contest{$contest}.site{$site}.clar{$n}.user{$user}.problem{$problem}.time{$t}", "w");
         if ($fp) {
             fwrite($fp, $question);
             fclose($fp);

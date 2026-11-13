@@ -218,13 +218,13 @@ function DBConnect($forcenew = false)
         }
     }
     if (!$conn) {
-        LOGError("Unable to connect to database (${conf["dbhost"]},${conf["dbname"]},${conf["dbuser"]}).");
-        MSGError("Unable to connect to database (${conf["dbhost"]}:${conf["dbport"]},${conf["dbname"]},${conf["dbuser"]}). ".
+        LOGError("Unable to connect to database ({$conf["dbhost"]},{$conf["dbname"]},{$conf["dbuser"]}).");
+        MSGError("Unable to connect to database ({$conf["dbhost"]}:{$conf["dbport"]},{$conf["dbname"]},{$conf["dbuser"]}). ".
             "Is it running? Is the DB password in conf.php correct?");
         exit;
     }
     if (isset($conf["dbclientenc"])) {
-        DBExecNonStop($conn, "SET NAMES '${conf["dbclientenc"]}'", "set client encoding");
+        DBExecNonStop($conn, "SET NAMES '{$conf["dbclientenc"]}'", "set client encoding");
     }
     return $conn;
 }
@@ -336,7 +336,7 @@ function DBDropDatabase()
         MSGError("Unable to connect to template1 as ".$conf["dbsuperuser"]);
         exit;
     }
-    $r = DBExecNonStop($conn, "drop database ${conf["dbname"]}", "DBDropDatabase(drop)");
+    $r = DBExecNonStop($conn, "drop database {$conf["dbname"]}", "DBDropDatabase(drop)");
 }
 // pg_connect ("options='--client_encoding=UTF8' dbname=template1 ... ????
 function DBCreateDatabase()
@@ -354,9 +354,9 @@ function DBCreateDatabase()
         exit;
     }
     if (isset($conf["dbencoding"])) {
-        $r = DBExec($conn, "create database ${conf["dbname"]} with encoding = '${conf["dbencoding"]}'", "DBCreateDatabase(create)");
+        $r = DBExec($conn, "create database {$conf["dbname"]} with encoding = '{$conf["dbencoding"]}'", "DBCreateDatabase(create)");
     } else {
-        $r = DBExec($conn, "create database ${conf["dbname"]} with encoding = 'UTF8'", "DBCreateDatabase(create)");
+        $r = DBExec($conn, "create database {$conf["dbname"]} with encoding = 'UTF8'", "DBCreateDatabase(create)");
     }
 }
 

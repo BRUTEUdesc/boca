@@ -109,7 +109,7 @@ function scoretransfer($putname, $localsite, $timeo = 60)
         //		LOGError("sess=$sess pass=" . trim($sitedata[2]) . " hash=" .  myhash(trim($sitedata[2])));
         $user = trim($sitedata[1]);
         $res = myhash(myhash(trim($sitedata[2])) . $sess);
-        //		LOGError("url=" . $siteurl . "index.php?name=${user}&password=${res}&action=transfer");
+        //		LOGError("url=" . $siteurl . "index.php?name={$user}&password={$res}&action=transfer");
         $opts = array(
               'http' => array(
                       'method' => 'GET',
@@ -129,7 +129,7 @@ function scoretransfer($putname, $localsite, $timeo = 60)
         $opts['https'] = array('verify_peer' => false, 'verify_peer_name' => false, 'allow_self_signed' => true);
         $context = stream_context_create($opts);
         try {
-            $ok = @file_get_contents($siteurl . "index.php?name=${user}&password=${res}&action=transfer", 0, $context);
+            $ok = @file_get_contents($siteurl . "index.php?name={$user}&password={$res}&action=transfer", 0, $context);
         } catch (Exception $e) {
             $ok = false;
         }
@@ -367,7 +367,7 @@ function getMainXML($contest, $timeo = 60, $upd = false)
     $context = stream_context_create($opts);
     $logstr .=  "Authorizing\n";
     try {
-        $ok = @file_get_contents($siteurl . "index.php?name=${user}&password=${res}&action=transfer", 0, $context);
+        $ok = @file_get_contents($siteurl . "index.php?name={$user}&password={$res}&action=transfer", 0, $context);
     } catch (Exception $e) {
         $ok = false;
     }

@@ -43,7 +43,7 @@ if (isset($_GET["ip"])) {
 } else {
     $ip = '';
 }
-$get = "&order=${order}&user=${user}&site=${site}&type=${type}&ip=${ip}";
+$get = "&order={$order}&user={$user}&site={$site}&type={$type}&ip={$ip}";
 if (isset($_GET["limit"]) && $_GET["limit"] > 0) {
     $limit = myhtmlspecialchars($_GET["limit"]);
 } else {

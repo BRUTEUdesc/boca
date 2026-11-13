@@ -256,7 +256,7 @@ if ($redo) {
     );
     if (count($rn) > 0 && $level > 3) {
         $strtmp .= "<table border=0><tr>";
-        $strtmp .= "<td>News (last ${minu}'): &nbsp;</td>\n";
+        $strtmp .= "<td>News (last {$minu}'): &nbsp;</td>\n";
         for ($i = 0; $i < count($rn); $i++) {
             $strtmp .= "<td width=200>";
             if ($rn[$i]["yes"] == 't') {
@@ -473,7 +473,7 @@ if ($redo) {
                                 } else {
                                     $t = "-";
                                 }
-                                $strtmp .= "<font size=\"-2\">" . $tn . "/${t}" . "</font>\n";
+                                $strtmp .= "<font size=\"-2\">" . $tn . "/{$t}" . "</font>\n";
                             } elseif ($des) {
                                 $strtmp .= "&nbsp;";
                             }

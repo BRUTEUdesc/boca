@@ -533,12 +533,12 @@ function DBGetRunToAutojudging($contest, $ip)
         "update runtable set autoip='" . $ip . "', " .
            "autobegindate=$t, autoenddate=null, autoanswer=null, autostdout=null, autostderr=null, " .
            "updatetime=$t " .
-           "where contestnumber=${a["contest"]} and runnumber=${a["number"]} and runsitenumber=${a["site"]}",
+           "where contestnumber={$a["contest"]} and runnumber={$a["number"]} and runsitenumber={$a["site"]}",
         "DBGetRunToAutojudging(update run)"
     );
 
     DBExec($c, "commit work", "DBGetRunToAutojudging(commit)");
-    LOGLevel("Autojudging got a run (run=${a["number"]}, site=${a["site"]}, contest=${a["contest"]})", 3);
+    LOGLevel("Autojudging got a run (run={$a["number"]}, site={$a["site"]}, contest={$a["contest"]})", 3);
     return $a;
 }
 function DBUpdateRunAutojudging($contest, $site, $number, $ip, $answer, $stdout, $stderr, $retval = 0)
@@ -1106,7 +1106,7 @@ function DBNewRun($param, $c = null, $allowinsert = true)
        umask(0077);
        @mkdir("/tmp/boca");
        if (!move_uploaded_file ($filepath,
-       "/tmp/boca/contest${contest}.site${site}.run${n}.user${user}.problem${problem}.time${t}.${filename}"))
+       "/tmp/boca/contest{$contest}.site{$site}.run{$n}.user{$user}.problem{$problem}.time{$t}.{$filename}"))
        LOGLevel("Run not saved as file (run=$runnumber,site=$site,contest=$contest", 1);
     */
 }
