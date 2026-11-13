@@ -162,8 +162,12 @@ function cleardir($dir,$cddir=true,$secure=true,$removedir=true) {
 		}
 		$d = @opendir($dir);
 		while (($file = @readdir($d)) !== false) {
-		  if($file != '.' && $file != '..')
-		    cleardir($dir . $ds . $file, false, $secure, true);
+		  if($file != '.' && $file != '..') {
+		    if(is_link($dir . $ds . $file))
+		      @unlink($dir . $ds . $file);
+		    else
+		      cleardir($dir . $ds . $file, false, $secure, true);
+		  }
 		}
 		@closedir($d);
 		if($removedir)
