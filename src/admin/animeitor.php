@@ -109,19 +109,19 @@ function saveTeamPhoto($login, $origName, $tmp, $photosDir)
     if ($ext === 'webp') {
         $ok = move_uploaded_file($tmp, $dest);
     } else {
-        $safeTmp = "$photosDir/.up_$team.$ext";
-        $ok = move_uploaded_file($tmp, $safeTmp);
-        if ($ok) {
-            $out = [];
-            $rc = 0;
-            // força o formato de entrada para o ImageMagick não detectar outro (svg/mvg...) pelo conteúdo
-            $inFmt = ($ext === 'png') ? 'png:' : 'jpg:';
-            exec("convert " . escapeshellarg($inFmt . $safeTmp) . " " . escapeshellarg($dest) . " 2>&1", $out, $rc);
-            @unlink($safeTmp);
-            if ($rc !== 0 || !file_exists($dest)) {
-                return "<p style='color:red'>✘ WebP conversion failed for $b (convert rc=$rc): "
-                    . htmlspecialchars(implode(' ', $out)) . "</p>";
-            }
+        // converte com o GD (php-gd), que só decodifica png/jpeg; o ImageMagick (convert) não está no servidor
+        $img = ($ext === 'png') ? @imagecreatefrompng($tmp) : @imagecreatefromjpeg($tmp);
+        if ($img === false) {
+            return "<p style='color:red'>✘ WebP conversion failed for $b (invalid image).</p>";
+        }
+        if ($ext === 'png') {
+            imagepalettetotruecolor($img);
+            imagealphablending($img, false);
+            imagesavealpha($img, true);
+        }
+        $ok = @imagewebp($img, $dest, 90);
+        if (!$ok) {
+            return "<p style='color:red'>✘ WebP conversion failed for $b.</p>";
         }
     }
     return ($ok && file_exists($dest))
