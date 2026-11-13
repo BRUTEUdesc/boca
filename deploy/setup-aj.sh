@@ -18,8 +18,9 @@
 # O send_ip_to_boca precisa do token em /root/.boca_aj_token (o mesmo do servidor).
 #
 # O que faz: pacotes do host, vendor (phpdotenv), .env 600, /etc/boca.conf, jail em /home/bocajail
-# (debootstrap da mesma versão do host, com gcc/g++/OpenJDK/Kotlin/Python), safeexec, bloqueio de
-# rede do uid bocajail, /home/bocajail/tmp com nosymfollow, services (bocaautojudge, send_ip_to_boca)
+# (debootstrap da mesma versão do host, com gcc/g++/OpenJDK/Kotlin/Python), safeexec (que põe o
+# código dos times num namespace de rede vazio e num /proc com hidepid), bloqueio de rede do uid
+# bocajail, /home/bocajail/tmp com nosymfollow, services (bocaautojudge, send_ip_to_boca)
 # e um teste das 5 linguagens (que roda dentro desse mount).
 # Não liga o autojudge se ele estiver desligado (só reinicia se já estiver habilitado).
 # Lógica de julgamento: igual ao upstream (src/private/autojudging.php + scripts dos problemas).
@@ -179,7 +180,9 @@ chroot "$JAIL" apt-get update -qq
 chroot "$JAIL" apt-get install -y -qq --no-install-recommends "${JAIL_PACKAGES[@]}" >/dev/null
 chroot "$JAIL" apt-get dist-upgrade -y -qq >/dev/null
 chroot "$JAIL" apt-get clean
-# o /proc do jail não fica montado (o runit.sh dos problemas monta quando precisa)
+# o /proc do jail não fica montado (o runit.sh dos problemas monta e desmonta a cada execução, por
+# isso o hidepid não é um mount persistente: o safeexec monta, num namespace de montagem só do
+# processo do time, um procfs novo com hidepid=invisible por cima e deixa o /sys somente leitura)
 jail_proc_umount
 
 log "Kotlin $KOTLIN_VERSION no jail"
@@ -199,7 +202,7 @@ fi
 chown -R root:root "$JAIL/opt/kotlinc"
 chmod -R a+rX,go-w "$JAIL/opt/kotlinc"
 
-log "safeexec (estático, sem setuid: os scripts já o chamam como root)"
+log "safeexec (estático, sem setuid: os scripts já o chamam como root; isola rede e /proc do time)"
 gcc -g -O2 -static "$REPO/tools/safeexec.c" -o /usr/bin/safeexec
 chown root:root /usr/bin/safeexec
 chmod 0755 /usr/bin/safeexec
@@ -282,6 +285,18 @@ for h,p in (("$DBHOST",5432),("127.0.0.1",22),("1.1.1.1",443)):
     except OSError: pass
 print("bloqueado")
 X
+# isolamento do safeexec: só os próprios processos no /proc (hidepid) e só o lo (namespace de rede)
+cat > "$T/iso.py" <<'X'
+import os,socket
+me=os.getuid(); outros=0; pids=0
+for p in os.listdir('/proc'):
+    if p.isdigit():
+        try:
+            pids+=1; outros+=os.stat('/proc/'+p).st_uid!=me
+        except OSError: pass
+ifs=[n for _,n in socket.if_nameindex()]
+print('isolado' if pids and not outros and ifs==['lo'] else 'pids=%d outros=%d ifs=%s'%(pids,outros,ifs))
+X
 echo "2 3" > "$T/in"
 chown bocajail "$T"/*
 SE="/usr/bin/safeexec -n0 -C$D -i$D/in -o$D/out -e$D/err -U$U -G$G -F512 -u512 -t60 -T60 -d40000000000 -m40000000000 --"
@@ -306,6 +321,11 @@ rm -f "$T/out"
 chroot "$JAIL" /bin/sh -c "cd $D && $SE /bin/sh -c 'python3 net.py'" >/dev/null 2>&1 || true
 if [ "$(cat "$T/out" 2>/dev/null)" = "bloqueado" ]; then echo "    rede do bocajail: bloqueada"
 else echo "    rede do bocajail: FALHOU ($(cat "$T/out" 2>/dev/null))"; fail=1; fi
+rm -f "$T/out"
+chroot "$JAIL" /bin/sh -c "cd $D && $SE /bin/sh -c 'python3 iso.py'" >/dev/null 2>&1 || true
+# só aviso: sem suporte no kernel o safeexec segue sem namespaces (o iptables continua bloqueando)
+if [ "$(cat "$T/out" 2>/dev/null)" = "isolado" ]; then echo "    namespace de rede e /proc com hidepid: ok"
+else echo "    AVISO: safeexec sem isolamento de rede e /proc ($(cat "$T/out" 2>/dev/null))"; fi
 asjail() { setpriv --reuid="$U" --regid="$G" --clear-groups -- "$@"; }
 if ! asjail cat /etc/hostname >/dev/null 2>&1; then
     echo "    teste do .env: FALHOU (setpriv não funcionou)"; fail=1
