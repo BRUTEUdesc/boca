@@ -1,0 +1,21 @@
+[Unit]
+# O autojudging.php julga em /bocajail/tmp/bocaXXXXXX.d e o código dos times escreve ali
+# (no C/C++ é a raiz do chroot; no Java/Kotlin/Python é o /tmp do jail). Depois, os scripts dos
+# problemas e o autojudging.php, como root e fora do chroot, fazem "cat stdout0", "cat ... >> allout",
+# chown etc. nesses caminhos. Com nosymfollow, o kernel não segue symlink nenhum deste mount, para
+# nenhum processo (inclusive root): um symlink criado pelo time vira erro (ELOOP) em vez de ler ou
+# alterar um arquivo do host. Só o tmp: os symlinks do sistema do jail (/usr/bin, alternatives)
+# ficam fora deste mount.
+# O nome do arquivo tem que ser o caminho escapado (systemd-escape -p --suffix=mount /home/bocajail/tmp).
+Description=Diretório de trabalho do autojudge sem seguir symlinks (nosymfollow)
+ConditionPathIsDirectory=/home/bocajail/tmp
+Before=bocaautojudge.service
+
+[Mount]
+What=/home/bocajail/tmp
+Where=/home/bocajail/tmp
+Type=none
+Options=bind,nosymfollow
+
+[Install]
+WantedBy=local-fs.target

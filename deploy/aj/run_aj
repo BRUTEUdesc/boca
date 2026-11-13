@@ -3,8 +3,9 @@
 #
 # Só julga com o jail íntegro. Sem /bocajail/tmp o autojudging.php roda o código dos times
 # fora do chroot (e faz "find / -user bocajail -delete" no host inteiro); sem o bloqueio de rede
-# o código dos times alcança o banco. Nesses casos é melhor não julgar: o log avisa e o loop
-# tenta de novo a cada 30 s.
+# o código dos times alcança o banco; sem o mount nosymfollow do /bocajail/tmp (unit
+# home-bocajail-tmp.mount) um symlink criado pelo time faz o root ler/alterar arquivos do host.
+# Nesses casos é melhor não julgar: o log avisa e o loop tenta de novo a cada 30 s.
 #
 # O autojudging.php não retorna (é um loop), então o boca-autojudge roda em background, numa
 # sessão/grupo de processos própria (setsid), e o jail é rechecado a cada 30 s: se quebrar, o
@@ -16,6 +17,7 @@ jail_ok() {
     [ -d /bocajail/tmp ] && [ "$(stat -L -c %u:%a /bocajail/tmp 2>/dev/null)" = "0:1777" ] &&
         [ "$(stat -L -c %u /bocajail 2>/dev/null)" = "0" ] &&
         [ -x /bocajail/usr/bin/safeexec ] &&
+        findmnt -rn -o OPTIONS -M "$(readlink -f /bocajail)/tmp" 2>/dev/null | grep -qw nosymfollow &&
         iptables -C OUTPUT -m owner --uid-owner bocajail -j REJECT 2>/dev/null &&
         ip6tables -C OUTPUT -m owner --uid-owner bocajail -j REJECT 2>/dev/null
 }

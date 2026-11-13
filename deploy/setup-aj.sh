@@ -16,7 +16,8 @@
 #
 # O que faz: pacotes do host, vendor (phpdotenv), .env 600, /etc/boca.conf, jail em /home/bocajail
 # (debootstrap da mesma versão do host, com gcc/g++/OpenJDK/Kotlin/Python), safeexec, bloqueio de
-# rede do uid bocajail, services (bocaautojudge, send_ip_to_boca) e um teste das 5 linguagens.
+# rede do uid bocajail, /home/bocajail/tmp com nosymfollow, services (bocaautojudge, send_ip_to_boca)
+# e um teste das 5 linguagens (que roda dentro desse mount).
 # Não liga o autojudge se ele estiver desligado (só reinicia se já estiver habilitado).
 # Lógica de julgamento: igual ao upstream (src/private/autojudging.php + scripts dos problemas).
 set -euo pipefail
@@ -215,7 +216,7 @@ log "services"
 install -m 0755 "$REPO/deploy/aj/run_aj" /usr/sbin/run_aj
 install -m 0700 "$REPO/tools/boca-autojudge.sh" /usr/sbin/boca-autojudge
 install -m 0700 "$REPO/deploy/aj/send_ip_to_boca" /usr/sbin/send_ip_to_boca
-for u in bocaautojudge.service send_ip_to_boca.service send_ip_to_boca.timer; do
+for u in bocaautojudge.service send_ip_to_boca.service send_ip_to_boca.timer home-bocajail-tmp.mount; do
     install -m 0644 "$REPO/deploy/aj/$u" /etc/systemd/system/
 done
 # unidades antigas (antes ficavam em /root/send_ip_to_boca + reload-send_ip_to_boca.service)
@@ -223,6 +224,13 @@ if [ -f /etc/systemd/system/reload-send_ip_to_boca.service ]; then
     rm -f /etc/systemd/system/reload-send_ip_to_boca.service
 fi
 systemctl daemon-reload
+# diretório de trabalho do autojudge com nosymfollow: o root não segue symlink criado pelo time
+# (ver deploy/aj/home-bocajail-tmp.mount, cujo nome fixa o caminho /home/bocajail/tmp)
+[ "$JAIL" = /home/bocajail ] || { echo "home-bocajail-tmp.mount assume JAIL=/home/bocajail"; exit 1; }
+systemctl enable -q home-bocajail-tmp.mount
+systemctl start home-bocajail-tmp.mount
+findmnt -rn -o OPTIONS -M "$JAIL/tmp" | grep -qw nosymfollow ||
+    { echo "$JAIL/tmp não ficou montado com nosymfollow"; exit 1; }
 systemctl enable -q boca-jail-net.service send_ip_to_boca.timer
 systemctl start boca-jail-net.service send_ip_to_boca.timer
 # a unit antiga tinha RemainAfterExit: a instância dela fica "active (exited)" e o timer novo não
