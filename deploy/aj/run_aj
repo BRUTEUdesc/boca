@@ -6,6 +6,8 @@
 # o código dos times alcança o banco; sem o mount nosymfollow do /bocajail/tmp (unit
 # home-bocajail-tmp.mount) um symlink criado pelo time faz o root ler/alterar arquivos do host.
 # Nesses casos é melhor não julgar: o log avisa e o loop tenta de novo a cada 30 s.
+# Exceção: se só a regra do iptables sumiu (p.ex. alguém rodou "iptables -F"), ela é reaplicada com o
+# mesmo /usr/sbin/boca-jail-net do boot e o julgamento continua; só para se a reaplicação falhar.
 #
 # O autojudging.php não retorna (é um loop), então o boca-autojudge roda em background, numa
 # sessão/grupo de processos própria (setsid), e o jail é rechecado a cada 30 s: se quebrar, o
@@ -13,13 +15,26 @@
 # também mata o grupo.
 log() { echo "run_aj: $*" >&2; }
 
+net_ok() {
+    iptables -C OUTPUT -m owner --uid-owner bocajail -j REJECT 2>/dev/null &&
+        ip6tables -C OUTPUT -m owner --uid-owner bocajail -j REJECT 2>/dev/null
+}
+
+# regra ausente: reaplica (idempotente) e confere; o jail_ok abaixo continua checando
+ensure_net() {
+    net_ok && return 0
+    log "regra do iptables/ip6tables do bocajail ausente; reaplicando com boca-jail-net"
+    /usr/sbin/boca-jail-net && net_ok && { log "regra do bocajail reaplicada"; return 0; }
+    log "falha ao reaplicar a regra do bocajail"
+    return 1
+}
+
 jail_ok() {
     [ -d /bocajail/tmp ] && [ "$(stat -L -c %u:%a /bocajail/tmp 2>/dev/null)" = "0:1777" ] &&
         [ "$(stat -L -c %u /bocajail 2>/dev/null)" = "0" ] &&
         [ -x /bocajail/usr/bin/safeexec ] &&
         findmnt -rn -o OPTIONS -M "$(readlink -f /bocajail)/tmp" 2>/dev/null | grep -qw nosymfollow &&
-        iptables -C OUTPUT -m owner --uid-owner bocajail -j REJECT 2>/dev/null &&
-        ip6tables -C OUTPUT -m owner --uid-owner bocajail -j REJECT 2>/dev/null
+        net_ok
 }
 
 aj_pid=
@@ -36,6 +51,20 @@ stop_aj() {
     kill -KILL -- "-$aj_pid" 2>/dev/null
     wait "$aj_pid" 2>/dev/null
     aj_pid=
+    kill_cgroup_rest
+}
+
+# O autojudging.php roda cada script do pacote via "timeout", que cria um grupo de processos próprio
+# (e o código do time pode ter feito setsid): matar o pgid não pega esses. Mata o resto do cgroup do
+# service, menos este script. Só sob o bocaautojudge.service (rodando à mão, o cgroup é a sessão).
+kill_cgroup_rest() {
+    local cg pid
+    cg=$(sed -n 's/^0:://p' /proc/self/cgroup 2>/dev/null)
+    case "$cg" in */bocaautojudge.service) ;; *) return 0 ;; esac
+    [ -r "/sys/fs/cgroup$cg/cgroup.procs" ] || return 0
+    while read -r pid; do
+        [ "$pid" = "$$" ] || kill -KILL "$pid" 2>/dev/null
+    done < "/sys/fs/cgroup$cg/cgroup.procs"
 }
 
 on_term() {
@@ -50,10 +79,12 @@ while true; do
     if [ -n "$aj_pid" ] && ! kill -0 "$aj_pid" 2>/dev/null; then
         wait "$aj_pid" 2>/dev/null
         log "boca-autojudge saiu (código $?)"
-        # o php pode ter deixado filhos no grupo
+        # o php pode ter deixado filhos no grupo (e scripts em grupos próprios, via timeout)
         kill -KILL -- "-$aj_pid" 2>/dev/null
         aj_pid=
+        kill_cgroup_rest
     fi
+    ensure_net || true
     if [ -z "$aj_pid" ]; then
         if jail_ok; then
             rm -rf /bocajail/tmp/* /tmp/boca*
