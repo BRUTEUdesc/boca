@@ -17,8 +17,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Last modified 05/aug/2012 by cassio@ime.usp.br
 
-require_once '/var/www/boca/vendor/autoload.php';
-Dotenv\Dotenv::createImmutable('/var/www/boca')->load();
+// BRUTE: segredos no /var/www/boca/.env (phpdotenv, composer install). safeLoad: sem .env (ou sem vendor)
+// a página não cai com fatal; sem BOCA_DB_PASS a conexão com o banco falha e o BOCA mostra o erro.
+if (is_readable('/var/www/boca/vendor/autoload.php')) {
+  require_once '/var/www/boca/vendor/autoload.php';
+  Dotenv\Dotenv::createImmutable('/var/www/boca')->safeLoad();
+} else
+  error_log("BOCA: falta /var/www/boca/vendor/autoload.php (rode composer install em /var/www/boca)");
 
 function globalconf() {
  $conf["dbencoding"]="UTF8";
@@ -46,7 +51,9 @@ $conf["dbsuperpass"]=$_ENV["BOCA_DB_SUPERPASS"] ?? null;
   // eventually created come already with the password set to this
   // value. It is your task later to update these passwords to
   // some other values within the BOCA web interface.
-  $conf["basepass"]=$_ENV["BOCA_BASE_PASS"] ?? null;
+  // sem BOCA_BASE_PASS usa o padrão do upstream ("boca"), nunca senha vazia
+  $conf["basepass"]=$_ENV["BOCA_BASE_PASS"] ?? "boca";
+  if($conf["basepass"]=="") $conf["basepass"]="boca";
 
   // secret key to be used in HTTP headers
   // you MUST set it with any random large enough sequence

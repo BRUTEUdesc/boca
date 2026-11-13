@@ -1,10 +1,13 @@
 <?php
 session_start();
+require_once("../globals.php");
+require_once("../db.php");
 
-if (!isset($_SESSION["usertable"]) || $_SESSION["usertable"]["usertype"] !== 'admin') {
+if (!ValidSession() || $_SESSION["usertable"]["usertype"] !== 'admin') {
     http_response_code(403);
     exit;
 }
+session_write_close();
 
 $output = shell_exec("sudo /usr/local/bin/animeitor-wrapper.sh urls 2>/dev/null");
 $entries = [];

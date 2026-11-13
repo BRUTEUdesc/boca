@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     ForceLoad("animeitor.php");
 }
 
-if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && $_POST["confirmation"] == "contest_confirm") {
+if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && ($_POST["confirmation"] ?? "") == "contest_confirm") {
     $newContest = intval($_POST["setContest"]);
     if ($newContest > 0) {
         if (@file_put_contents($animeitorContestPath, $newContest . "\n", LOCK_EX) !== false) {
@@ -54,7 +54,7 @@ if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && $_POST["confirmat
     ForceLoad("animeitor.php");
 }
 
-if (isset($_POST["command"]) && $_POST["confirmation"] == "animeitor_confirm") {
+if (isset($_POST["command"]) && ($_POST["confirmation"] ?? "") == "animeitor_confirm") {
     $cmd = $_POST["command"];
     if ($cmd == "start" || $cmd == "stop" || $cmd == "restart") {
         shell_exec("sudo /usr/local/bin/animeitor-wrapper.sh $cmd > /dev/null 2>&1 &");
@@ -63,7 +63,7 @@ if (isset($_POST["command"]) && $_POST["confirmation"] == "animeitor_confirm") {
     ForceLoad("animeitor.php");
 }
 
-if (isset($_POST["command"]) && $_POST["confirmation"] == "clean_confirm") {
+if (isset($_POST["command"]) && ($_POST["confirmation"] ?? "") == "clean_confirm") {
     shell_exec("sudo /usr/local/bin/clean-webcast-cache.sh > /dev/null 2>&1 &");
     LogLevel("Webcast cache clean dispatched", 1);
     ForceLoad("animeitor.php");
@@ -97,23 +97,31 @@ function saveTeamPhoto($login, $origName, $tmp, $photosDir)
     }
     $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
     if (!in_array($ext, ['png', 'jpg', 'jpeg', 'webp'])) {
-        return "<p style='color:red'>✘ Invalid photo format (.$ext) for $b. Allowed: png/jpg/webp.</p>";
+        return "<p style='color:red'>✘ Invalid photo format (." . htmlspecialchars($ext) . ") for $b. Allowed: png/jpg/webp.</p>";
+    }
+    // o conteúdo tem que bater com a extensão (não confiar só no nome do arquivo)
+    $imgTypes = ['png' => IMAGETYPE_PNG, 'jpg' => IMAGETYPE_JPEG, 'jpeg' => IMAGETYPE_JPEG, 'webp' => IMAGETYPE_WEBP];
+    $info = @getimagesize($tmp);
+    if ($info === false || $info[2] !== $imgTypes[$ext]) {
+        return "<p style='color:red'>✘ File content is not a valid ." . htmlspecialchars($ext) . " image for $b.</p>";
     }
     $dest = "$photosDir/$team.webp";
     if ($ext === 'webp') {
         $ok = move_uploaded_file($tmp, $dest);
     } else {
-        $safeTmp = "$photosDir/.up_$team.$ext";
-        $ok = move_uploaded_file($tmp, $safeTmp);
-        if ($ok) {
-            $out = [];
-            $rc = 0;
-            exec("convert " . escapeshellarg($safeTmp) . " " . escapeshellarg($dest) . " 2>&1", $out, $rc);
-            @unlink($safeTmp);
-            if ($rc !== 0 || !file_exists($dest)) {
-                return "<p style='color:red'>✘ WebP conversion failed for $b (convert rc=$rc): "
-                    . htmlspecialchars(implode(' ', $out)) . "</p>";
-            }
+        // converte com o GD (php-gd), que só decodifica png/jpeg; o ImageMagick (convert) não está no servidor
+        $img = ($ext === 'png') ? @imagecreatefrompng($tmp) : @imagecreatefromjpeg($tmp);
+        if ($img === false) {
+            return "<p style='color:red'>✘ WebP conversion failed for $b (invalid image).</p>";
+        }
+        if ($ext === 'png') {
+            imagepalettetotruecolor($img);
+            imagealphablending($img, false);
+            imagesavealpha($img, true);
+        }
+        $ok = @imagewebp($img, $dest, 90);
+        if (!$ok) {
+            return "<p style='color:red'>✘ WebP conversion failed for $b.</p>";
         }
     }
     return ($ok && file_exists($dest))
@@ -131,7 +139,12 @@ function saveTeamSound($login, $origName, $tmp, $soundsDir)
     }
     $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
     if ($ext !== 'mp3') {
-        return "<p style='color:red'>✘ Invalid sound format (.$ext) for $b. Allowed: mp3.</p>";
+        return "<p style='color:red'>✘ Invalid sound format (." . htmlspecialchars($ext) . ") for $b. Allowed: mp3.</p>";
+    }
+    // mp3: começa com tag ID3 ou com um frame MPEG (sync 0xFFE)
+    $head = (string)@file_get_contents($tmp, false, null, 0, 3);
+    if (strncmp($head, 'ID3', 3) !== 0 && !(strlen($head) >= 2 && ord($head[0]) === 0xFF && (ord($head[1]) & 0xE0) === 0xE0)) {
+        return "<p style='color:red'>✘ File content is not a valid .mp3 for $b.</p>";
     }
     $ok = move_uploaded_file($tmp, "$soundsDir/$team.mp3");
     return $ok

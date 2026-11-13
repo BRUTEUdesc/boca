@@ -24,9 +24,9 @@ if(($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
 	ForceLoad("../index.php");
 
 // Caminho do arquivo de cores padrão
-$colors_file = '/var/www/boca/src/admin/default_problem_colors.json';
-// Carrega o JSON de cores (retorna array associativo)
-$default_colors = json_decode(file_get_contents($colors_file), true);
+$colors_file = __DIR__ . '/default_problem_colors.json';
+// Carrega o JSON de cores (retorna array associativo); sem o arquivo, segue sem cores padrão
+$default_colors = is_readable($colors_file) ? json_decode(file_get_contents($colors_file), true) : null;
 
 $contest = (int)$_SESSION["usertable"]["contestnumber"];
 $contest_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest.pdf";
@@ -205,13 +205,17 @@ if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) &&
 				IntrusionNotify("file upload problem.");
 				ForceLoad("../index.php");
 			}
-		} else $name = "";
+		} else $name = $temp = "";
 
 		$problem_number = (int)$problem_number;
 
 		$problem_name = trim($_POST["problemname"]);
 		if ($problem_name === "") {
-			// Map problem number to letters: 1->A, 2->B, etc.
+			// Map problem number to letters: 1->A, 2->B, etc. (só vale de 1 a 26)
+			if ($problem_number < 1 || $problem_number > 26) {
+				MSGError('Problem short name is required when the problem number is not between 1 and 26.');
+				ForceLoad("problem.php");
+			}
 			$problem_name = chr(64 + $problem_number); // 64 = ASCII('A') - 1
 		}
 
@@ -230,7 +234,7 @@ if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) &&
 			} else {
 				// Se não estiver no JSON, use algo padrão
 				if ($colorname === "") {
-					$colorname = " Color";
+					$colorname = "Default Color";
 				}
 				if ($color === "") {
 					$color = "CCCCCC"; // Cinza claro, por exemplo
