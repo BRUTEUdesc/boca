@@ -25,9 +25,9 @@ $s = $st;
 $des = true;
 $ver = false;
 $detail = true;
-if ($_GET["p"] == "0") {
+if (($_GET["p"] ?? null) == "0") {
     $ver = false;
-} elseif ($_GET["p"] == "2") {
+} elseif (($_GET["p"] ?? null) == "2") {
     $detail = false;
 } else {
     $ver = true;

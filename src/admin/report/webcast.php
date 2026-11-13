@@ -141,7 +141,7 @@ if (!file_exists($webcastdir . $ds . 'contest') || filemtime($webcastdir . $ds .
         $teamName = $a['userfullname'];
         $pieces = explode(']', $a['userdesc']);
         $pieces = explode('[', trim($pieces[0]));
-        $teamUni = trim($pieces[1]);
+        $teamUni = trim($pieces[1] ?? "");
         //print_r( array_keys($a));
 
         $contestfile = $contestfile .
