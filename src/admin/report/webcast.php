@@ -320,7 +320,7 @@ $class = 1;
 $nid = 1;
 if (false) {
     $score = DBScore($contest, false, -1, $site);
-    while (list($e, $c) = each($score)) {
+    foreach ($score as $e => $c) {
         if (isset($score[$e]["site"]) && isset($score[$e]["user"])) {
             $r = DBUserInfo(
                 $contest,
