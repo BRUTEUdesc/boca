@@ -7,8 +7,12 @@
 #
 #   sudo deploy/setup-aj.sh
 #
-# O .env do autojudge precisa de BOCA_DB_HOST (IP do servidor BOCA) e BOCA_DB_PASS,
-# BOCA_DB_SUPERPASS, BOCA_BASE_PASS, BOCA_KEY iguais aos do servidor.
+# O .env do autojudge só precisa de BOCA_DB_HOST (IP do servidor BOCA) e BOCA_DB_PASS (igual ao do
+# servidor). Não copie BOCA_DB_SUPERPASS, BOCA_BASE_PASS nem BOCA_KEY: o autojudge não os usa e esta
+# máquina roda código dos times. BOCA_AUTOJUDGE_IP é o identificador deste AJ no BOCA (aj1, aj2...;
+# distinto por AJ): se faltar no .env, é acrescentado a partir da variável de ambiente
+# BOCA_AUTOJUDGE_IP ou do hostname (brute-AJ1 -> aj1); se já existir, não é alterado.
+# O send_ip_to_boca precisa do token em /root/.boca_aj_token (o mesmo do servidor).
 #
 # O que faz: pacotes do host, vendor (phpdotenv), .env 600, /etc/boca.conf, jail em /home/bocajail
 # (debootstrap da mesma versão do host, com gcc/g++/OpenJDK/Kotlin/Python), safeexec, bloqueio de
@@ -102,6 +106,22 @@ chown root:root "$BOCADIR/.env"
 chmod 600 "$BOCADIR/.env"
 DBHOST=$(sed -nE 's/^BOCA_DB_HOST=["'\'']?([^"'\'' ]*).*/\1/p' "$BOCADIR/.env" | tail -1)
 [ -n "$DBHOST" ] || { echo "falta BOCA_DB_HOST no $BOCADIR/.env"; exit 1; }
+if ! grep -qE '^BOCA_AUTOJUDGE_IP=' "$BOCADIR/.env"; then
+    ajid=${BOCA_AUTOJUDGE_IP:-$(hostname | sed -nE 's/^brute-AJ([0-9]+)$/aj\1/p')}
+    if [[ "$ajid" =~ ^[A-Za-z0-9._-]+$ ]]; then
+        # garante o \n final antes de acrescentar
+        [ -z "$(tail -c1 "$BOCADIR/.env")" ] || echo >> "$BOCADIR/.env"
+        printf 'BOCA_AUTOJUDGE_IP=%s\n' "$ajid" >> "$BOCADIR/.env"
+        log "BOCA_AUTOJUDGE_IP=$ajid acrescentado ao .env"
+    else
+        echo "AVISO: falta BOCA_AUTOJUDGE_IP no .env (ex.: aj1); rode com BOCA_AUTOJUDGE_IP=ajN $0" >&2
+    fi
+fi
+for v in BOCA_DB_SUPERPASS BOCA_BASE_PASS BOCA_KEY; do
+    grep -qE "^$v=" "$BOCADIR/.env" &&
+        echo "AVISO: $v está no .env do autojudge, que não o usa; pode ser removido" >&2
+done
+[ -f /root/.boca_aj_token ] || echo "AVISO: falta /root/.boca_aj_token (send_ip_to_boca vai falhar)" >&2
 printf 'bdserver=%s\nbocadir=%s\nbdcreated=y\n' "$DBHOST" "$BOCADIR" > /etc/boca.conf
 # arquivos privados do BOCA não podem ser legíveis pelo bocajail
 chmod -R go-rwx "$BOCADIR/src/private" 2>/dev/null || true
