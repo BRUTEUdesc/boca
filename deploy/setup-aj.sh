@@ -199,6 +199,10 @@ fi
 systemctl daemon-reload
 systemctl enable -q boca-jail-net.service send_ip_to_boca.timer
 systemctl start boca-jail-net.service send_ip_to_boca.timer
+# a unit antiga tinha RemainAfterExit: a instância dela fica "active (exited)" e o timer novo não
+# dispara até o reboot. O restart já roda a versão nova (IP real no servidor); sem rede, só avisa.
+systemctl restart send_ip_to_boca.service ||
+    echo "AVISO: send_ip_to_boca falhou (rede?); o timer tenta de novo a cada minuto" >&2
 
 log "teste das linguagens no jail (como bocajail, com safeexec)"
 U=$(id -u bocajail); G=$(id -g bocajail)
