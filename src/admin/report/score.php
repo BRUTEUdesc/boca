@@ -1,5 +1,4 @@
 <?php
-
 ////////////////////////////////////////////////////////////////////////////////
 //BOCA Online Contest Administrator
 //    Copyright (C) 2003-2012 by BOCA System (bocasystem@gmail.com)
@@ -23,28 +22,23 @@ require('header.php');
 $final = true;
 $s = $st;
 $des = true;
-$ver = false;
-$detail = true;
-if (($_GET["p"] ?? null) == "0") {
-    $ver = false;
-} elseif (($_GET["p"] ?? null) == "2") {
-    $detail = false;
-} else {
-    $ver = true;
-    $des = false;
+$ver=false;
+$detail=true;
+if(($_GET["p"] ?? null) == "0") $ver = false;
+else if(($_GET["p"] ?? null) == "2") $detail=false;
+else {
+  $ver = true;
+  $des = false;
 }
-if (isset($_GET["hor"])) {
-    $hor = $_GET["hor"];
-} else {
-    $hor = -1;
-}
+if(isset($_GET["hor"])) $hor = $_GET["hor"];
+else $hor = -1;
 
 if ($s["currenttime"] >= $s["sitelastmilescore"] && $ver) {
-    $togo = (int) (($s['siteduration'] - $s["sitelastmilescore"]) / 60);
-    echo"<br /><center><h2>Scoreboard (as of $togo minutes to go)</h2></center>\n";
-} else {
-    echo"<br /><center><h2>Final Scoreboard</h2></center>\n";
-}
+	$togo = (int) (($s['siteduration'] - $s["sitelastmilescore"])/60);
+	echo"<br /><center><h2>Scoreboard (as of $togo minutes to go)</h2></center>\n";
+} else
+	echo"<br /><center><h2>Final Scoreboard</h2></center>\n";
 
 require("$locr/scoretable.php");
 include("$locr/footnote.php");
+?>
