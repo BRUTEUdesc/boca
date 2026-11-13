@@ -36,6 +36,24 @@ function getCurrentContest()
     return ($a != null) ? (int)$a['contestnumber'] : 1;
 }
 
+// Cache do webcast (private/webcast.<codigo>*): o script roda como www-data, dono desses arquivos
+function cleanWebcastCache($background)
+{
+    shell_exec("/usr/local/bin/clean-webcast-cache.sh > /dev/null 2>&1" . ($background ? " &" : ""));
+}
+
+// Foto/som só para login de time existente neste contest (nunca os arquivos padrão do animeitor)
+function isTeamLogin($login)
+{
+    global $ct;
+    if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $login) || in_array(strtolower($login), ['fake', 'applause'], true)) {
+        return false;
+    }
+    $a = DBGetRow("select username from usertable where contestnumber=" . (int)$ct['contestnumber'] .
+        " and usertype='team' and username='$login'", 0);
+    return $a != null;
+}
+
 // Toda acao POST desta pagina exige o token CSRF da sessao
 if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
     (isset($_POST["Submit3"]) || isset($_POST["command"]) || isset($_POST['delete']) || isset($_POST['do_upload'])) &&
@@ -46,10 +64,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' &&
 
 if (isset($_POST["Submit3"]) && isset($_POST["setContest"]) && ($_POST["confirmation"] ?? "") == "contest_confirm") {
     $newContest = intval($_POST["setContest"]);
-    if ($newContest > 0) {
-        if (@file_put_contents($animeitorContestPath, $newContest . "\n", LOCK_EX) !== false) {
-            LogLevel("Contest changed to " . $newContest, 1);
-        }
+    // DBGetRow e não DBContestInfo: este avisa "Contact an admin now!" quando o contest não existe
+    if ($newContest <= 0 || DBGetRow("select contestnumber from contesttable where contestnumber=$newContest", 0) == null) {
+        MSGError("Contest " . (int)$newContest . " does not exist.");
+    } elseif (@file_put_contents($animeitorContestPath, $newContest . "\n", LOCK_EX) !== false) {
+        LogLevel("Contest changed to " . $newContest, 1);
+        // o webcast guarda o contest em cache por 1 h: limpa para o animeitor pegar o novo
+        cleanWebcastCache(false);
+    } else {
+        MSGError("Could not write the animeitor contest file.");
     }
     ForceLoad("animeitor.php");
 }
@@ -64,7 +87,7 @@ if (isset($_POST["command"]) && ($_POST["confirmation"] ?? "") == "animeitor_con
 }
 
 if (isset($_POST["command"]) && ($_POST["confirmation"] ?? "") == "clean_confirm") {
-    shell_exec("sudo /usr/local/bin/clean-webcast-cache.sh > /dev/null 2>&1 &");
+    cleanWebcastCache(true);
     LogLevel("Webcast cache clean dispatched", 1);
     ForceLoad("animeitor.php");
 }
@@ -92,7 +115,7 @@ function saveTeamPhoto($login, $origName, $tmp, $photosDir)
 {
     $team = preg_replace('/[^a-zA-Z0-9_\-]/', '', $login);
     $b = "<b>" . htmlspecialchars($team) . "</b>";
-    if ($team === '') {
+    if ($team === '' || $team !== (string)$login || !isTeamLogin($team)) {
         return "<p style='color:red'>✘ Invalid team.</p>";
     }
     $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
@@ -134,7 +157,7 @@ function saveTeamSound($login, $origName, $tmp, $soundsDir)
 {
     $team = preg_replace('/[^a-zA-Z0-9_\-]/', '', $login);
     $b = "<b>" . htmlspecialchars($team) . "</b>";
-    if ($team === '') {
+    if ($team === '' || $team !== (string)$login || !isTeamLogin($team)) {
         return "<p style='color:red'>✘ Invalid team.</p>";
     }
     $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
@@ -158,7 +181,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete'])) {
     $type = $parts[0] ?? '';
     $team = preg_replace('/[^a-zA-Z0-9_\-]/', '', $parts[1] ?? '');
     $msg = '';
-    if ($team !== '') {
+    if ($team !== '' && !isTeamLogin($team)) {
+        $msg = "<p style='color:red'>✘ <b>" . htmlspecialchars($team) . "</b> is not a team of this contest.</p>";
+    } elseif ($team !== '') {
         $b = "<b>" . htmlspecialchars($team) . "</b>";
         if ($type === 'photo') {
             @unlink("$photosDir/$team.webp");

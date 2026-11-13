@@ -67,9 +67,13 @@ O sistema suporta dois PDFs de contest independentes:
 
 Os comandos são **fire-and-forget**: rodam via `shell_exec` com `> /dev/null 2>&1 &`, retornando imediatamente sem bloquear a página. Não há detecção de erro do processo em si — o log registra apenas que o comando foi despachado.
 
-Scripts envolvidos (precisam de `sudo` configurado no servidor):
-- `/usr/local/bin/animeitor-wrapper.sh`
-- `/usr/local/bin/clean-webcast-cache.sh`
+Scripts envolvidos:
+- `/usr/local/bin/animeitor-wrapper.sh` (via `sudo`, configurado no servidor)
+- `/usr/local/bin/clean-webcast-cache.sh` (sem `sudo`: roda como www-data, dono do cache; chamado como root, ele mesmo troca para www-data). Também roda depois do "Set Contest", que só aceita contest existente.
+
+Fotos e sons só podem ser enviados/apagados para logins de time do contest (nunca `fake.webp`/`applause.mp3`).
+
+`admin/report/webcast.php` e `s4ris.php` (placar sem congelamento, sem login) só respondem para o próprio servidor e para a rede docker do animeitor (`deploy/apache/boca.conf`); nas outras páginas de `admin/report/`, `webcastcode` não dispensa o login.
 
 ### Status (polling assíncrono)
 

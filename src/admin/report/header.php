@@ -30,7 +30,10 @@ require_once($locr . "/globals.php");
 require_once($locr."/db.php");
 require_once($locr."/freport.php");
 
-if(isset($_GET['webcastcode']) && ctype_alnum($_GET['webcastcode'])) {
+// Sem sessão só para o webcast/s4ris (código conferido no webcast.sep; o Apache só libera esses dois
+// para o servidor e o container do animeitor). Nas outras páginas, webcastcode não dispensa o login.
+if(isset($_GET['webcastcode']) && ctype_alnum($_GET['webcastcode']) &&
+   in_array(basename($_SERVER['SCRIPT_FILENAME'] ?? ''), array('webcast.php', 's4ris.php'), true)) {
   header ("Content-transfer-encoding: binary\n");
   header ("Content-type: application/force-download");
   ob_end_flush();
