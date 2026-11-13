@@ -17,13 +17,16 @@
 # BOCA_AUTOJUDGE_IP ou do hostname (brute-AJ1 -> aj1); se já existir, não é alterado.
 # O send_ip_to_boca precisa do token em /root/.boca_aj_token (o mesmo do servidor).
 #
-# O que faz: pacotes do host, vendor (phpdotenv), .env 600, /etc/boca.conf, jail em /home/bocajail
-# (debootstrap da mesma versão do host, com gcc/g++/OpenJDK/Kotlin/Python), safeexec (que põe o
+# O que faz: remove resíduos do maratona-linux antigo (cron boca-fixssh, PPA), tira do
+# unattended-upgrades/needrestart o que afeta julgamento, pacotes do host, vendor (phpdotenv),
+# .env 600, /etc/boca.conf, jail em /home/bocajail (debootstrap da mesma versão do host, com
+# gcc/g++/OpenJDK/Kotlin/Python; console/tty/ptmx do jail 600), safeexec (que põe o
 # código dos times num namespace de rede vazio e num /proc com hidepid), bloqueio de rede do uid
-# bocajail, /home/bocajail/tmp com nosymfollow, services (bocaautojudge, send_ip_to_boca)
-# e um teste das 5 linguagens (que roda dentro desse mount).
+# bocajail, /home/bocajail/tmp com nosymfollow, services (bocaautojudge com MemoryMax/TasksMax,
+# send_ip_to_boca) e um teste das 5 linguagens (que roda dentro desse mount).
 # Não liga o autojudge se ele estiver desligado (só reinicia se já estiver habilitado).
-# Lógica de julgamento: igual ao upstream (src/private/autojudging.php + scripts dos problemas).
+# Lógica de julgamento: igual ao upstream (src/private/autojudging.php + scripts dos problemas),
+# com teto de tempo em cada script do pacote (um script travado vira "Contact staff").
 set -euo pipefail
 
 # ---- configuração --------------------------------------------------------------------------
@@ -94,6 +97,39 @@ fi
 
 # não julgar enquanto o jail é montado/alterado (no fim ele volta se estiver habilitado)
 systemctl stop bocaautojudge.service 2>/dev/null || true
+
+log "resíduos do maratona-linux antigo"
+# cron do pacote boca-common (removido, só a config ficou): chama /usr/sbin/boca-fixssh, que não existe
+rm -f /etc/cron.d/cron-boca-fixssh /var/log/boca-fixssh.out /var/log/boca-fixssh.err
+# PPA de outra release (jammy) do maratona-linux: um apt upgrade poderia puxar pacotes de lá
+rm -f /etc/apt/sources.list.d/icpc-latam-ubuntu-maratona-linux-*.sources \
+    /etc/apt/sources.list.d/icpc-latam-ubuntu-maratona-linux-*.list
+
+log "atualizações automáticas sem afetar julgamento"
+# Os AJs são atualizados à mão, fora de prova (este script, que também atualiza o jail). O
+# unattended-upgrades só mexe no host (o jail tem dpkg próprio e não é tocado), mas o host roda o
+# php do autojudging.php e os compiladores/intérpretes usados no teste deste script; e o needrestart
+# reiniciaria o bocaautojudge no meio de um julgamento depois de atualizar php/libc.
+cat > /etc/apt/apt.conf.d/51boca-autojudge <<'X'
+// deploy/setup-aj.sh: pacotes que só são atualizados à mão, fora de prova
+Unattended-Upgrade::Package-Blacklist {
+    "php";
+    "openjdk-";
+    "kotlin";
+    "gcc";
+    "g\+\+";
+    "cpp";
+    "libstdc\+\+";
+    "python3";
+};
+Unattended-Upgrade::Automatic-Reboot "false";
+X
+if [ -d /etc/needrestart/conf.d ]; then
+    cat > /etc/needrestart/conf.d/boca-autojudge.conf <<'X'
+# deploy/setup-aj.sh: nunca reiniciar o autojudge sozinho (reinício só à mão, fora de prova)
+$nrconf{override_rc}{qr(^bocaautojudge\.service$)} = 0;
+X
+fi
 
 log "pacotes do host"
 apt-get update -qq
@@ -219,6 +255,13 @@ chmod 1777 "$JAIL/tmp"
 ln -sfn "$JAIL" /bocajail
 # nenhum binário setuid/setgid no jail (o bocajail não tem por que virar root lá dentro)
 find "$JAIL" -xdev -type f -perm /6000 -exec chmod ug-s {} +
+# o debootstrap cria console/tty/ptmx 666 no /dev do jail (que não é nodev): o código do time abriria
+# o console do host. Nenhuma linguagem precisa deles (null/zero/random/urandom/full continuam 666).
+if ! mountpoint -q "$JAIL/dev"; then
+    for n in console tty ptmx; do
+        if [ -c "$JAIL/dev/$n" ]; then chown root:root "$JAIL/dev/$n"; chmod 600 "$JAIL/dev/$n"; fi
+    done
+fi
 
 log "rede do bocajail bloqueada"
 install -m 0755 "$REPO/deploy/aj/boca-jail-net" /usr/sbin/boca-jail-net

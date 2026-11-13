@@ -76,6 +76,23 @@ cleardir($cache);
 @mkdir($cache);
 $key=md5(mt_rand() . rand() . mt_rand());
 
+// Teto de tempo dos scripts do pacote (compile/run/compare), que rodam como root. Sem ele, um script
+// travado prende o autojudge para sempre: p.ex. o codigo do time troca runit.retcode ou stderr0 por um
+// FIFO e o "echo >"/"grep" do script (como root, depois que o time ja morreu) bloqueia no open().
+// O safeexec ja limita o codigo do time a TL+30 s de relogio, entao os tetos abaixo (bem maiores) so
+// estouram se o proprio script travar. Estourou: a run vira "Contact staff" e o autojudge segue.
+// "timeout" poe o script num grupo de processos proprio e mata o grupo inteiro (-k: KILL 10 s depois).
+//   compile: TL + 330 s (o script limita a compilacao a TL+30 s)
+//   run:     (TL + 30) * repeticoes + 120 s, por arquivo de entrada
+//   compare: 600 s fixos, por arquivo (o checker pode ser compilado na primeira vez)
+function ajtimeout($secs) {
+  return 'timeout -k 10 ' . ((int) $secs) . ' ';
+}
+// 124: estourou o tempo; 137: precisou do KILL (ou o script foi morto por SIGKILL)
+function ajtimedout($rc) {
+  return $rc == 124 || $rc == 137;
+}
+
 $cf = globalconf();
 $ip = $cf["ip"];
 $prevsleep=0;
@@ -150,7 +167,7 @@ while(42) {
   if(DB_lo_export($contest,$c, $run["sourceoid"], $dir . $ds . $run["sourcename"]) === false) {
     DBExec($c, "rollback work", "Autojudging(rollback-source)");
     LogLevel("Autojudging: Unable to export source file (run=$number, site=$site, contest=$contest)",1);
-    echo "Error exporting source file ${run["sourcename"]} (contest=$contest, site=$site, run=$number)\n";
+    echo "Error exporting source file {$run["sourcename"]} (contest=$contest, site=$site, run=$number)\n";
     DBGiveUpRunAutojudging($contest, $site, $number, $ip, "error: unable to export source file");
     DBExec($c, "commit", "Autojudging(exportcommit)");
     continue;
@@ -187,7 +204,7 @@ while(42) {
     if(DB_lo_export($contest,$c, $run["inputoid"], $dir . $ds . $run["inputname"]) === false) {
       DBExec($c, "rollback work", "Autojudging(rollback-input)");
       LogLevel("Autojudging: Unable to export problem package file (run=$number, site=$site, contest=$contest)",1);
-      echo "Error exporting problem package file ${run["inputname"]} (contest=$contest, site=$site, run=$number)\n";
+      echo "Error exporting problem package file {$run["inputname"]} (contest=$contest, site=$site, run=$number)\n";
       DBGiveUpRunAutojudging($contest, $site, $number, $ip, "error: unable to export problem package file");
       continue;
     }
@@ -348,7 +365,10 @@ while(42) {
   system('touch allerr');
 
   chmod($script, 0700);
-  $ex = escapeshellcmd($script) ." ".
+  $ajtl = max(1, (int) trim($limits[$basename][$run["extension"]][0]));
+  $ajnruns = max(1, (int) trim($limits[$basename][$run["extension"]][1]));
+  $ajtimeout = false;
+  $ex = ajtimeout($ajtl + 330) . escapeshellcmd($script) ." ".
     escapeshellarg($run["sourcename"])." ".
     escapeshellarg($basename) . " ".
     escapeshellarg(trim($limits[$basename][$run["extension"]][0]))." ".
@@ -358,6 +378,7 @@ while(42) {
   @unlink('stderr');
   echo "Executing " . $ex . " at " . getcwd() . "\n";
   if(system($ex, $retval)===false) $retval=-1;
+  if(ajtimedout($retval)) $ajtimeout = 'compile';
   // o script de compilacao faz "chown bocajail ." aqui; o codigo do time (Java/Kotlin/Python enxergam
   // este diretorio) nao pode trocar allout/allerr/team/compout por symlink
   @chown($dir, "root");
@@ -371,7 +392,10 @@ while(42) {
     system('/bin/cat stderr >> allerr');
   }
 
-  if($retval != 0) {
+  if($ajtimeout !== false) {
+    $retval = 7;
+    $answer = "(Contact staff) autojudge: compile script timed out";
+  } else if($retval != 0) {
     list($retval,$answer) = exitmsg($retval);
     $answer = "(WHILE COMPILING) " . $answer;
   } else {
@@ -459,7 +483,7 @@ while(42) {
 	    }
 	  }
 
-	  $ex = escapeshellcmd($script) ." ".
+	  $ex = ajtimeout(($ajtl + 30) * $ajnruns + 120) . escapeshellcmd($script) ." ".
 	    escapeshellarg($basename) . " ".
 	    escapeshellarg($dir . $ds . "input" . $ds . $file)." ".
 	    escapeshellarg(trim($limits[$basename][$run["extension"]][0]))." ".
@@ -492,6 +516,7 @@ while(42) {
 	  chdir($dir . $ds . 'tmp');
 	  echo "Executing " . $ex . " at " . getcwd() . " for input " . $file . "\n";
 	  if(system($ex, $localretval)===false) $localretval=-1;
+	  if(ajtimedout($localretval)) $ajtimeout = 'run';
 	  foreach (glob($dir . $ds . 'tmp' . $ds . '*') as $fne) {
 	    if(is_link($fne) || (!is_file($fne) && !is_dir($fne))) {
 	      @unlink($fne);
@@ -508,6 +533,11 @@ while(42) {
 	  system('/bin/echo ##### STDOUT FOR FILE ' . escapeshellarg($file) . ' >> ' . $dir . $ds . 'allout');
 	  system('/bin/cat stdout >> ' . $dir . $ds . 'allout');
 	  chdir($dir);
+	  if($ajtimeout !== false) {
+	    $retval = 7;
+	    $answer = "(Contact staff) autojudge: run script timed out (input " . $file . ")";
+	    break;
+	  }
 	  if($localretval != 0) {
 	    list($retval,$answer) = exitmsg($localretval);
 	    $answer = "(WHILE RUNNING) " . $answer;
@@ -515,13 +545,14 @@ while(42) {
 	  }
 	  if(is_file($dir . $ds . 'output' . $ds . $file)) {
 	    @unlink($dir . $ds . 'compout');
-	    $ex = escapeshellcmd($scriptcomp) ." ".
+	    $ex = ajtimeout(600) . escapeshellcmd($scriptcomp) ." ".
 	      escapeshellarg($dir . $ds . "team" . $ds . $file)." ".
 	      escapeshellarg($dir . $ds . "output" . $ds . $file)." ".
 	      escapeshellarg($dir . $ds . "input" . $ds . $file) . " >compout 2>&1";
 	    echo "Executing " . $ex . " at " . getcwd() . " for output file $file\n";
 	    if(system($ex, $localretval)===false)
 	      $localretval = -1;
+	    if(ajtimedout($localretval)) $ajtimeout = 'compare';
 
 	    $fp = fopen($dir . $ds . "allerr", "a+");
 	    fwrite($fp, "\n\n===OUTPUT OF COMPARING SCRIPT FOLLOWS FOR FILE " .$file ." (EMPTY MEANS NO DIFF)===\n");
@@ -545,6 +576,11 @@ while(42) {
 	    }
 	    */
 	    // retval 5 (presentation) and retval 6 (wronganswer) are already compatible with the compare script
+	    if($ajtimeout !== false) {
+	      $retval = 7;
+	      $answer = "(Contact staff) autojudge: compare script timed out (input " . $file . ")";
+	      break;
+	    }
 	    if($localretval < 4 || $localretval > 6) {
 	      // contact staff
 	      $retval = 7;
@@ -663,7 +699,10 @@ while(42) {
       }
     */
   }
-  if($retval >= 7 && $retval <= 9) {
+  if($ajtimeout !== false) {
+    LogLevel("Autojudging: $ajtimeout script timed out (run=$number, site=$site, contest=$contest)",1);
+    echo "Autojudging: $ajtimeout script timed out -- answering contact staff (contest=$contest, site=$site, run=$number)\n";
+  } else if($retval >= 7 && $retval <= 9) {
     $ans = file("allout");
     $anstmp = '';
     if(count($ans) > 0)

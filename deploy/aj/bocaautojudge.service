@@ -10,6 +10,17 @@ RequiresMountsFor=/home/bocajail/tmp
 ExecStart=/usr/sbin/run_aj
 Restart=always
 RestartSec=10
+# Teto do cgroup (php + scripts + código dos times, que são descendentes do service). Os AJs têm
+# ~15 GiB e nenhum swap: sem teto, um time com muitos processos x limite de memória do problema leva a
+# máquina inteira ao OOM. 12G deixa ~3 GiB para o sistema e cobre com folga o pior julgamento
+# legítimo (php até 1,2 GB + JVM com -Xms do problema + compilação do Kotlin).
+MemoryMax=12G
+# o safeexec já limita o time a 64-512 processos/threads (-u); 4096 cobre JVM/kotlinc com folga e
+# corta fork bomb que escape do limite por uid
+TasksMax=4096
+# OOM dentro do cgroup mata só o processo escolhido (em geral o do time: vira RE) e o autojudge segue;
+# o padrão (stop) derrubaria o service e a run voltaria para a fila
+OOMPolicy=continue
 
 [Install]
 WantedBy=multi-user.target
