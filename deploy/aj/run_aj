@@ -1,0 +1,73 @@
+#!/bin/bash
+# Loop do autojudge (bocaautojudge.service). Instalado em /usr/sbin/run_aj por deploy/setup-aj.sh.
+#
+# Só julga com o jail íntegro. Sem /bocajail/tmp o autojudging.php roda o código dos times
+# fora do chroot (e faz "find / -user bocajail -delete" no host inteiro); sem o bloqueio de rede
+# o código dos times alcança o banco. Nesses casos é melhor não julgar: o log avisa e o loop
+# tenta de novo a cada 30 s.
+#
+# O autojudging.php não retorna (é um loop), então o boca-autojudge roda em background, numa
+# sessão/grupo de processos própria (setsid), e o jail é rechecado a cada 30 s: se quebrar, o
+# grupo inteiro (boca-autojudge + php + o que estiver julgando) é morto. SIGTERM (systemctl stop)
+# também mata o grupo.
+log() { echo "run_aj: $*" >&2; }
+
+jail_ok() {
+    [ -d /bocajail/tmp ] && [ "$(stat -L -c %u:%a /bocajail/tmp 2>/dev/null)" = "0:1777" ] &&
+        [ "$(stat -L -c %u /bocajail 2>/dev/null)" = "0" ] &&
+        [ -x /bocajail/usr/bin/safeexec ] &&
+        iptables -C OUTPUT -m owner --uid-owner bocajail -j REJECT 2>/dev/null &&
+        ip6tables -C OUTPUT -m owner --uid-owner bocajail -j REJECT 2>/dev/null
+}
+
+aj_pid=
+sleep_pid=
+
+# mata o grupo de processos do boca-autojudge (pgid == pid, por causa do setsid)
+stop_aj() {
+    [ -n "$aj_pid" ] || return 0
+    kill -TERM -- "-$aj_pid" 2>/dev/null
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        kill -0 -- "-$aj_pid" 2>/dev/null || break
+        sleep 1
+    done
+    kill -KILL -- "-$aj_pid" 2>/dev/null
+    wait "$aj_pid" 2>/dev/null
+    aj_pid=
+}
+
+on_term() {
+    log "recebido sinal de parada; matando o boca-autojudge"
+    [ -n "$sleep_pid" ] && kill "$sleep_pid" 2>/dev/null
+    stop_aj
+    exit 0
+}
+trap on_term TERM INT HUP
+
+while true; do
+    if [ -n "$aj_pid" ] && ! kill -0 "$aj_pid" 2>/dev/null; then
+        wait "$aj_pid" 2>/dev/null
+        log "boca-autojudge saiu (código $?)"
+        # o php pode ter deixado filhos no grupo
+        kill -KILL -- "-$aj_pid" 2>/dev/null
+        aj_pid=
+    fi
+    if [ -z "$aj_pid" ]; then
+        if jail_ok; then
+            rm -rf /bocajail/tmp/* /tmp/boca*
+            setsid boca-autojudge &
+            aj_pid=$!
+            log "boca-autojudge iniciado (pid/pgid $aj_pid)"
+        else
+            log "jail ausente/incompleto ou rede do bocajail liberada; NÃO julgando. Rode deploy/setup-aj.sh"
+        fi
+    elif ! jail_ok; then
+        log "jail ausente/incompleto ou rede do bocajail liberada durante o julgamento; matando o boca-autojudge (pgid $aj_pid). Rode deploy/setup-aj.sh"
+        stop_aj
+    fi
+    # sleep em background + wait: o trap de SIGTERM roda na hora, sem esperar os 30 s
+    sleep 30 &
+    sleep_pid=$!
+    wait "$sleep_pid"
+    sleep_pid=
+done

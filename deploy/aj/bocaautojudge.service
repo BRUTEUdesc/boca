@@ -1,0 +1,13 @@
+[Unit]
+Description=Boca AutoJudge
+After=network-online.target boca-jail-net.service
+Wants=network-online.target
+Requires=boca-jail-net.service
+
+[Service]
+ExecStart=/usr/sbin/run_aj
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

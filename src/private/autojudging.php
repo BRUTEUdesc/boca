@@ -58,10 +58,7 @@ $tmpdir = getenv("TMP");
 if ($tmpdir == "") {
     $tmpdir = getenv("TMPDIR");
 }
-if ($tmpdir[0] != '/') {
-    $tmdir = "/tmp";
-}
-if ($tmpdir == "") {
+if ($tmpdir == "" || $tmpdir[0] != '/') {
     $tmpdir = "/tmp";
 }
 
