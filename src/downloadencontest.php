@@ -17,8 +17,12 @@ $contest_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest-en.p
 $is_admin = $_SESSION["usertable"]["usertype"] == "admin";
 
 if ((!$is_admin && count($prob) == 0) || !file_exists($contest_path) || !is_readable($contest_path)) {
-    IntrusionNotify("Contest not ready yet.");
-    ForceLoad("index.php");
+    // ainda não liberado ou sem PDF: não é intrusão, só avisa (sem derrubar a sessão)
+    ob_clean();
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Contest PDF not available yet.";
+    exit;
 }
 
 $filePath = $contest_path;
