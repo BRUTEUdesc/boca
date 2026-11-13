@@ -142,7 +142,13 @@ if [ "$JAILCODE" != "$CODENAME" ]; then
         rm -rf --one-file-system "$JAIL.new"
     fi
     log "debootstrap $CODENAME em $JAIL.new (demora)"
-    debootstrap --variant=minbase "$CODENAME" "$JAIL.new" "$MIRROR" >/dev/null
+    # o IPv6 dos AJs é instável e o wget do debootstrap (ao contrário do apt) não cai para IPv4:
+    # fica minutos em SYN-SENT por pacote. Força IPv4 só neste wget, sem mexer no /root/.wgetrc.
+    t=$(mktemp -d)
+    printf 'prefer-family = IPv4\n' > "$t/wgetrc"
+    WGETRC=$t/wgetrc debootstrap --variant=minbase "$CODENAME" "$JAIL.new" "$MIRROR" >/dev/null
+    rm -rf "$t"
+    t=""
     umount_under "$JAIL.new"
     if [ -e "$JAIL" ]; then
         old="$JAIL.old-${JAILCODE:-x}-$(date +%Y%m%d%H%M)"
