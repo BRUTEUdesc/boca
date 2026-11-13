@@ -99,7 +99,7 @@ log "verificação"
 code=$(curl -sk -o /dev/null -m 15 -w '%{http_code}' https://localhost/ || true)
 echo "    HTTPS local: $code"
 php -r "echo '    upload_max_filesize CLI: '.ini_get('upload_max_filesize').PHP_EOL;"
-old=$(pg_lsclusters -h | awk -v v="$PGV" '$1!=v {print $1"/"$2" ("$4")"}')
+old=$(pg_lsclusters -h | awk -v v="$PGV" '$1!=v && $4 ~ /^online/ {print $1"/"$2" ("$4")"}')
 if [ -n "$old" ]; then
     echo "    ATENÇÃO: cluster(s) PostgreSQL antigo(s): $old"
     echo "    migrar: pg_dropcluster $PGV main --stop; pg_upgradecluster -m upgrade --link <ver_antiga> main; e rode este script de novo"
