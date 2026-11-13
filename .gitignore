@@ -20,9 +20,12 @@ src/private/agentcode/
 src/private/webcast.*
 !src/private/webcast.sep
 
-src/private/scoretmp/
-src/private/problemtmp/
-src/private/runtmp/
+src/private/scoretmp/*
+!src/private/scoretmp/index.html
+src/private/problemtmp/*
+!src/private/problemtmp/.htaccess
+src/private/runtmp/*
+!src/private/runtmp/index.html
 src/private/comp/*
 src/private/runslog/
 src/autojudgeip/ip_aj1
