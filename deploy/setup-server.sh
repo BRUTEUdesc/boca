@@ -1,6 +1,9 @@
 #!/bin/bash
 # Setup/ajuste do servidor web do BOCA (fork BRUTEUdesc) em Ubuntu.
 #
+# NÃO RODE COM CONTEST EM ANDAMENTO: instala/atualiza pacotes e reinicia serviços
+# (Apache, PHP-FPM, PostgreSQL).
+#
 # Idempotente: pode rodar quantas vezes quiser. Use:
 #   - num servidor novo (depois de clonar o repo em /var/www/boca);
 #   - depois de todo do-release-upgrade (PHP e PostgreSQL mudam de versão).
@@ -16,12 +19,12 @@ set -euo pipefail
 
 # ---- configuração --------------------------------------------------------------------------
 BOCADIR=/var/www/boca
-# IPs que podem acessar o PostgreSQL (os autojudges conectam direto no banco, com SSL e SCRAM).
-# São os IPs de NAT pelos quais cada AJ chega no servidor: AJ1 (10.20.161.98) -> .162,
-# AJ2 (10.20.162.51) -> .163. AJ novo ou NAT trocado: atualizar aqui.
-DB_ALLOWED_IPS=("200.19.106.162/32" "200.19.106.163/32")
-# Redes inteiras (md5) que versões antigas deste script liberavam: removidas do pg_hba e do ufw.
-DB_LEGACY_NETS=("10.20.0.0/16" "200.19.106.0/24")
+# Acesso dos autojudges ao PostgreSQL: de qualquer IP (o NAT da UDESC pode mudar), mas só com
+# SSL + certificado de cliente assinado pela CA abaixo (CN = usuário do banco) + senha SCRAM.
+# Certificado de um AJ novo: deploy/pg-client-cert.sh ajN (e copiar para /root/.postgresql/ do AJ).
+PG_CLIENT_CA_DIR=/root/pg-clientca
+# Regras antigas (por rede/IP) que versões anteriores deste script criavam: removidas do pg_hba e do ufw.
+DB_LEGACY_NETS=("10.20.0.0/16" "200.19.106.0/24" "200.19.106.162/32" "200.19.106.163/32")
 
 PACKAGES=(
     apache2 php-fpm php-cli php-pgsql php-gd php-xml php-zip php-intl php-mbstring
@@ -146,18 +149,28 @@ if [ "$(cat "$PGCONF" 2>/dev/null)" != "$PGCONF_WANT" ]; then
     printf '%s\n' "$PGCONF_WANT" > "$PGCONF"
     pg_restart=1
 fi
+# CA dos certificados de cliente (criada uma vez; a chave da CA fica só em $PG_CLIENT_CA_DIR)
+if [ ! -f "$PG_CLIENT_CA_DIR/ca.crt" ]; then
+    install -d -m 700 "$PG_CLIENT_CA_DIR"
+    openssl req -new -x509 -days 3650 -nodes -newkey rsa:3072 -subj "/CN=BOCA BRUTE client CA" \
+        -keyout "$PG_CLIENT_CA_DIR/ca.key" -out "$PG_CLIENT_CA_DIR/ca.crt" 2>/dev/null
+    chmod 600 "$PG_CLIENT_CA_DIR/ca.key"
+    log "CA de cliente do PostgreSQL criada em $PG_CLIENT_CA_DIR"
+fi
+install -o postgres -g postgres -m 644 "$PG_CLIENT_CA_DIR/ca.crt" "$PGDIR/client-ca.crt"
+grep -qE "^ssl_ca_file\s*=\s*'$PGDIR/client-ca.crt'" "$PGDIR/conf.d/001-boca-ssl.conf" 2>/dev/null || {
+    printf "ssl_ca_file = '%s'\n" "$PGDIR/client-ca.crt" > "$PGDIR/conf.d/001-boca-ssl.conf"
+}
 HBA=$PGDIR/pg_hba.conf
-# nunca deixar o banco aberto para a internet (IPv4 e IPv6)
-sed -i -E '/^(host|hostssl)\s+all\s+all\s+(0\.0\.0\.0\/0|::\/0)(\s|$)/d' "$HBA"
+# nada sem SSL nem sem certificado vindo de fora (IPv4 e IPv6)
+sed -i -E '/^host\s+all\s+all\s+(0\.0\.0\.0\/0|::\/0)(\s|$)/d' "$HBA"
+sed -i -E '/^hostssl\s+all\s+all\s+(0\.0\.0\.0\/0|::\/0)\s/{/clientcert=verify-full/!d}' "$HBA"
 for net in "${DB_LEGACY_NETS[@]}"; do
     sed -i -E "\#^(host|hostssl)\s+all\s+all\s+${net//./\\.}(\s|$)#d" "$HBA"
 done
-for ip in "${DB_ALLOWED_IPS[@]}"; do
-    re=${ip//./\\.}
-    # sem SSL não: uma linha "host" do mesmo IP antes da hostssl casaria primeiro
-    sed -i -E "\#^host\s+all\s+all\s+${re%/32}(/32)?\s#d" "$HBA"
-    grep -qE "^hostssl\s+all\s+all\s+${re}\s+scram-sha-256(\s|$)" "$HBA" ||
-        printf '%-8s%-16s%-16s%-24s%s\n' hostssl all all "$ip" scram-sha-256 >> "$HBA"
+for net in 0.0.0.0/0 ::/0; do
+    grep -qE "^hostssl\s+all\s+all\s+${net//./\\.}\s+scram-sha-256\s+clientcert=verify-full" "$HBA" ||
+        printf '%-8s%-16s%-16s%-24s%s\n' hostssl all all "$net" "scram-sha-256 clientcert=verify-full" >> "$HBA"
 done
 # pg_hba só precisa de reload (não derruba conexões dos autojudges)
 if [ "$pg_restart" = 1 ] || ! systemctl is-active -q "postgresql@$PGV-main"; then
@@ -191,21 +204,16 @@ fi
 log "firewall (ufw)"
 ufw_st=$(ufw status)
 grep -q '^Status: active' <<<"$ufw_st" ||
-    echo "    ATENÇÃO: ufw inativo; só o pg_hba protege a porta 5432 (ligar com: ufw enable)"
-if grep -E "^5432/tcp( \(v6\))?\s+ALLOW\s+Anywhere" <<<"$ufw_st" >/dev/null; then
-    ufw delete allow 5432/tcp >/dev/null
-fi
+    echo "    ATENÇÃO: ufw inativo (ligar com: ufw enable)"
 for net in "${DB_LEGACY_NETS[@]}"; do
-    if grep -E "^5432/tcp\s+ALLOW\s+${net//./\\.}(\s|$)" <<<"$ufw_st" >/dev/null; then
-        ufw delete allow from "$net" to any port 5432 proto tcp >/dev/null
+    # o ufw mostra o host sem /32
+    re=${net%/32}
+    if grep -E "^5432/tcp\s+ALLOW\s+${re//./\\.}(\s|$)" <<<"$ufw_st" >/dev/null; then
+        ufw delete allow from "$re" to any port 5432 proto tcp >/dev/null
     fi
 done
-for ip in "${DB_ALLOWED_IPS[@]}"; do
-    # o ufw mostra o host sem /32
-    re=${ip%/32}
-    grep -E "^5432/tcp\s+ALLOW\s+${re//./\\.}(\s|$)" <<<"$ufw_st" >/dev/null ||
-        ufw allow from "${ip%/32}" to any port 5432 proto tcp >/dev/null
-done
+# aberto para qualquer IP: quem protege é o pg_hba (SSL + certificado de cliente + senha)
+grep -E "^5432/tcp\s+ALLOW\s+Anywhere" <<<"$ufw_st" >/dev/null || ufw allow 5432/tcp >/dev/null
 
 log "dono dos arquivos em $BOCADIR e hooks do git"
 if [ -d "$BOCADIR" ]; then

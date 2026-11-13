@@ -1,6 +1,9 @@
 #!/bin/bash
 # Setup/ajuste de um autojudge do BOCA (fork BRUTEUdesc) em Ubuntu.
 #
+# NÃO RODE COM CONTEST EM ANDAMENTO: instala/atualiza pacotes e reinicia serviços (o setup-aj.sh
+# para o autojudge e atualiza o jail, o que pode trocar a versão dos compiladores).
+#
 # Idempotente: pode rodar quantas vezes quiser. Use:
 #   - num autojudge novo (depois de clonar o repo em /var/www/boca e criar o .env);
 #   - depois de todo do-release-upgrade (o jail é refeito na versão nova do Ubuntu).
@@ -117,6 +120,13 @@ if ! grep -qE '^BOCA_AUTOJUDGE_IP=' "$BOCADIR/.env"; then
     else
         echo "AVISO: falta BOCA_AUTOJUDGE_IP no .env (ex.: aj1); rode com BOCA_AUTOJUDGE_IP=ajN $0" >&2
     fi
+fi
+# o banco só aceita o AJ com certificado de cliente (deploy/pg-client-cert.sh no servidor)
+if [ -f /root/.postgresql/postgresql.crt ] && [ -f /root/.postgresql/postgresql.key ]; then
+    chmod 600 /root/.postgresql/postgresql.key
+else
+    echo "AVISO: falta /root/.postgresql/postgresql.{crt,key}; sem eles o autojudge não conecta no banco" >&2
+    echo "       (no servidor: deploy/pg-client-cert.sh ajN e copie os dois arquivos para cá)" >&2
 fi
 for v in BOCA_DB_SUPERPASS BOCA_BASE_PASS BOCA_KEY; do
     grep -qE "^$v=" "$BOCADIR/.env" &&
