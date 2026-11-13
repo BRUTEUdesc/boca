@@ -12,6 +12,7 @@
 set -euo pipefail
 
 # ---- configuração --------------------------------------------------------------------------
+BOCADIR=/var/www/boca
 # IPs que podem acessar o PostgreSQL (os autojudges conectam direto no banco, com SSL e SCRAM).
 # São os IPs de NAT pelos quais cada AJ chega no servidor: AJ1 (10.20.161.98) -> .162,
 # AJ2 (10.20.162.51) -> .163. AJ novo ou NAT trocado: atualizar aqui.
@@ -32,6 +33,17 @@ post_max_size = 400M
 memory_limit = 1536M
 max_execution_time = 300
 output_buffering = 4096
+EOF
+)
+
+# hooks do git em $BOCADIR: git rodado como root (pull/checkout) deixaria arquivos novos com dono root
+GIT_HOOK=$(cat <<'EOF'
+#!/bin/sh
+# instalado por deploy/setup-server.sh: o PHP roda como www-data e precisa escrever em arquivos
+# versionados (score.sep, webcast.sep, admin/report/webcast.php); git rodado como root os deixaria root.
+top=$(git rev-parse --show-toplevel) || exit 0
+find "$top" -path "$top/.git" -prune -o -path "$top/.env" -prune -o ! -user www-data -exec chown -h www-data:www-data {} +
+exit 0
 EOF
 )
 # --------------------------------------------------------------------------------------------
@@ -173,6 +185,27 @@ for ip in "${DB_ALLOWED_IPS[@]}"; do
     grep -E "^5432/tcp\s+ALLOW\s+${re//./\\.}(\s|$)" <<<"$ufw_st" >/dev/null ||
         ufw allow from "${ip%/32}" to any port 5432 proto tcp >/dev/null
 done
+
+log "dono dos arquivos em $BOCADIR e hooks do git"
+if [ -d "$BOCADIR" ]; then
+    # tudo www-data, menos .git (root, como o git que roda nele) e .env (root:www-data 640)
+    find "$BOCADIR" -path "$BOCADIR/.git" -prune -o -path "$BOCADIR/.env" -prune -o ! -user www-data \
+        -exec chown -h www-data:www-data {} +
+    if [ -f "$BOCADIR/.env" ]; then
+        chown root:www-data "$BOCADIR/.env"
+        chmod 640 "$BOCADIR/.env"
+    fi
+    if [ -d "$BOCADIR/.git/hooks" ]; then
+        for h in post-checkout post-merge post-rewrite; do
+            f=$BOCADIR/.git/hooks/$h
+            [ "$(cat "$f" 2>/dev/null)" = "$GIT_HOOK" ] || printf '%s\n' "$GIT_HOOK" > "$f"
+            chown root:root "$f"
+            chmod 755 "$f"
+        done
+    fi
+else
+    echo "    ATENÇÃO: $BOCADIR não existe (clonar o repo lá e rodar de novo)"
+fi
 
 log "verificação"
 code=$(curl -sk -o /dev/null -m 15 -w '%{http_code}' https://localhost/ || true)
