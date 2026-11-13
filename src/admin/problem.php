@@ -205,7 +205,7 @@ if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) &&
 				IntrusionNotify("file upload problem.");
 				ForceLoad("../index.php");
 			}
-		} else $name = "";
+		} else $name = $temp = "";
 
 		$problem_number = (int)$problem_number;
 
