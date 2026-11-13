@@ -4,16 +4,37 @@ Este fork do BOCA contém modificações específicas para o ambiente da UDESC/J
 
 ---
 
-## Usuários `teamext`
+## Instalação: `.env` e `composer install`
 
-Usuários cujo username começa com `teamext` são **filtrados automaticamente** das filas de tasks no painel admin (`src/admin/task.php`) e staff (`src/staff/task.php`). Eles existem no sistema mas não aparecem nessas views.
+O `src/private/conf.php` lê os segredos de `/var/www/boca/.env` (fora do docroot, dono `root:www-data`, modo `640`) com o `vlucas/phpdotenv`. Depois de clonar em `/var/www/boca`:
+
+```sh
+cd /var/www/boca && composer install --no-dev   # usa o composer.json/composer.lock versionados
+```
+
+| Variável | Uso |
+|---|---|
+| `BOCA_DB_HOST` | host do PostgreSQL (padrão `localhost`; nos autojudges, o IP do servidor) |
+| `BOCA_DB_PASS` | senha do `bocauser` |
+| `BOCA_DB_SUPERPASS` | senha do superusuário do banco (só no servidor) |
+| `BOCA_BASE_PASS` | senha inicial do `admin`/`system` de contest novo (sem ela: `boca`, como o upstream) |
+| `BOCA_KEY` | chave secreta dos links de download e dos caches (só no servidor) |
+| `BOCA_AUTOJUDGE_IP` | identificador do autojudge (`aj1`, `aj2`...; só nos AJs) |
+
+Sem `.env` (ou sem `vendor/`) as páginas não dão fatal: a conexão com o banco falha e o BOCA mostra o erro.
+
+---
+
+## Usuários `teamext` e `teamonline`
+
+Usuários cujo username começa com `teamext` ou `teamonline` são **filtrados automaticamente** das filas de tasks no painel admin (`src/admin/task.php`) e staff (`src/staff/task.php`) e não contam para o FIRST SOLVE dos balões (`DBFirstSolveTaskKeys` em `src/ftask.php`). Eles existem no sistema mas não aparecem nessas views.
 
 Se um novo `task.php` for criado para outro papel, aplicar o mesmo filtro:
 
 ```php
 $filtered_tasks = array();
 for ($i = 0; $i < count($task); $i++) {
-    if (strpos($task[$i]["username"], "teamext") !== 0) {
+    if (strpos($task[$i]["username"], "teamext") !== 0 && strpos($task[$i]["username"], "teamonline") !== 0) {
         $filtered_tasks[] = $task[$i];
     }
 }
@@ -28,14 +49,15 @@ O sistema suporta dois PDFs de contest independentes:
 
 | Arquivo | Path no servidor |
 |---|---|
-| Português | `src/private/secretcontest/contest.pdf` |
-| Inglês | `src/private/secretcontest/contest-en.pdf` |
+| Português | `src/private/secretcontest/<contest>/contest.pdf` |
+| Inglês | `src/private/secretcontest/<contest>/contest-en.pdf` |
 
 - Upload e delete de cada um são independentes em `src/admin/contest.php`
 - Download PT: `src/downloadcontest.php`
 - Download EN: `src/downloadencontest.php`
 - Os links aparecem em `src/admin/problem.php` e `src/team/problem.php` condicionalmente (só se o arquivo existir)
-- O diretório `src/private/secretcontest/*.pdf` é ignorado pelo git — os arquivos devem ser carregados via painel admin
+- O upload só aceita arquivo que comece com `%PDF`. Antes do início da prova o download para times responde 404 ("not available yet"), sem deslogar
+- O diretório `src/private/secretcontest/` é ignorado pelo git — os arquivos devem ser carregados via painel admin
 
 ---
 
@@ -57,13 +79,13 @@ O status do animeitor **não é verificado no carregamento da página**. Em vez 
 
 ## `ANIMEITOR_CONTEST` — contest ativo do webcast
 
-Em `src/admin/report/webcast.php` há uma variável `$ANIMEITOR_CONTEST` que define qual contest o webcast exibe. Ela **não precisa ser editada manualmente** — o painel admin do animeitor (`src/admin/animeitor.php`) possui um campo para alterar esse valor, que reescreve o arquivo via regex.
+O contest exibido pelo webcast (`src/admin/report/webcast.php`) vem de `src/private/animeitor.contest` (fora do git), gravado pelo painel admin do animeitor (`src/admin/animeitor.php`). Sem o arquivo, usa o contest ativo.
 
 ---
 
 ## `score.sep` e `webcast.sep`
 
-Esses arquivos são versionados e definem a configuração de categorias/faixas do contest.
+Esses arquivos ficam fora do git (editados em `src/admin/scores.php`); os modelos versionados são `score.sep.sample` e `webcast.sep.sample`. Definem a configuração de categorias/faixas do contest.
 
 ### `src/private/score.sep`
 
