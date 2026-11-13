@@ -490,6 +490,10 @@ while(42) {
 	  echo "Executing " . $ex . " at " . getcwd() . " for input " . $file . "\n";
 	  if(system($ex, $localretval)===false) $localretval=-1;
 	  foreach (glob($dir . $ds . 'tmp' . $ds . '*') as $fne) {
+	    if(is_link($fne) || (!is_file($fne) && !is_dir($fne))) {
+	      @unlink($fne);
+	      continue;
+	    }
 	    @chown($fne,"nobody");
 	    @chmod($fne,0755);
 	  }
