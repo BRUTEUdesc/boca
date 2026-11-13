@@ -18,6 +18,12 @@ function is_polygon_package($filename)
 
 function convert_polygon_to_boca($inputfilepath, $letter)
 {
+    // O nome curto vira parte de caminhos (log/zip) e argumento do script: so aceita
+    // [A-Za-z0-9._-], sem comecar com '.' ou '-' (barra '.', '..', '/', '\', NUL e opcoes).
+    if (!is_string($letter) || !preg_match('/\A[A-Za-z0-9_][A-Za-z0-9._-]*\z/', $letter)) {
+        return false;
+    }
+
     $inputArg = escapeshellarg($inputfilepath);
     $letterArg = escapeshellarg($letter);
 
