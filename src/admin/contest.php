@@ -84,8 +84,8 @@ if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["p
 			}
 
 			// Verifique se o arquivo é um PDF
-			$file_ext = strtolower(end(explode('.', $name)));
-			if ($file_ext != "pdf") {
+			$file_ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+			if ($file_ext != "pdf" || @file_get_contents($temp, false, null, 0, 4) !== "%PDF") {
 				MSGError('Please upload a valid PDF file.');
 			} else {
 				@mkdir(dirname($portuguese_contest_path), 0755, true);
@@ -107,8 +107,8 @@ if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["p
 			}
 
 			// Verifique se o arquivo é um PDF
-			$file_ext = strtolower(end(explode('.', $name)));
-			if ($file_ext != "pdf") {
+			$file_ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+			if ($file_ext != "pdf" || @file_get_contents($temp, false, null, 0, 4) !== "%PDF") {
 				MSGError('Please upload a valid PDF file.');
 			} else {
 				@mkdir(dirname($english_contest_path), 0755, true);
@@ -122,12 +122,12 @@ if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["p
 			if (file_exists($portuguese_contest_path)) {
 				// Delete the file
 				if (unlink($portuguese_contest_path)) {
-					echo "Portuguese Contest PDF deleted successfully!";
+					MSGError('Portuguese Contest PDF deleted successfully!');
 				} else {
-					echo "Failed to delete Portuguese Contest PDF.";
+					MSGError('Failed to delete Portuguese Contest PDF.');
 				}
 			} else {
-				echo "Portuguese Contest PDF does not exist.";
+				MSGError('Portuguese Contest PDF does not exist.');
 			}
 		}
 
@@ -135,12 +135,12 @@ if (isset($_POST["Submit3"]) && isset($_POST["penalty"]) && is_numeric($_POST["p
 			if (file_exists($english_contest_path)) {
 				// Delete the file
 				if (unlink($english_contest_path)) {
-					echo "English Contest PDF deleted successfully!";
+					MSGError('English Contest PDF deleted successfully!');
 				} else {
-					echo "Failed to delete English Contest PDF.";
+					MSGError('Failed to delete English Contest PDF.');
 				}
 			} else {
-				echo "English Contest PDF does not exist.";
+				MSGError('English Contest PDF does not exist.');
 			}
 		}
 		if($_POST["Submit3"] == "Become Main Site") {
