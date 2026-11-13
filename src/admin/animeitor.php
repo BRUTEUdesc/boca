@@ -31,7 +31,9 @@ function getCurrentContest()
     if ($n > 0) {
         return $n;
     }
-    return 7;
+    // sem arquivo: o contest ativo (ou 1, como o upstream)
+    $a = DBGetRow("select contestnumber from contesttable where contestactive='t'", 0);
+    return ($a != null) ? (int)$a['contestnumber'] : 1;
 }
 
 // Toda acao POST desta pagina exige o token CSRF da sessao
