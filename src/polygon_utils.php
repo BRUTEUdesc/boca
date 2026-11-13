@@ -18,6 +18,12 @@ function is_polygon_package($filename)
 
 function convert_polygon_to_boca($inputfilepath, $letter)
 {
+    // O nome curto vira parte de caminhos (log/zip) e argumento do script: so aceita
+    // [A-Za-z0-9._-], sem comecar com '.' ou '-' (barra '.', '..', '/', '\', NUL e opcoes).
+    if (!is_string($letter) || !preg_match('/\A[A-Za-z0-9_][A-Za-z0-9._-]*\z/', $letter)) {
+        return false;
+    }
+
     $inputArg = escapeshellarg($inputfilepath);
     $letterArg = escapeshellarg($letter);
 
@@ -31,8 +37,9 @@ function convert_polygon_to_boca($inputfilepath, $letter)
     $JAVA_TL_FACTOR = 3;
     $PYTHON_TL_FACTOR = 3;
 
-    $command = "cd $baseDir && python3 make_from_full_package.py $letterArg $tempZip $JAVA_TL_FACTOR $PYTHON_TL_FACTOR --no-backup --zip-only > " . $logFile . " 2>&1";
+    $command = "cd $baseDir && python3 make_from_full_package.py $letterArg $tempZip $JAVA_TL_FACTOR $PYTHON_TL_FACTOR --no-backup --zip-only > " . escapeshellarg($logFile) . " 2>&1";
     shell_exec($command);
+    @unlink($inputfilepath . ".zip");
 
     $outputPath = "$baseDir/zip_packages/Problem_" . trim($letter) . ".zip";
     $outputFilename = "Problem_" . trim($letter) . ".zip";
