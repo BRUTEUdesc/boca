@@ -516,7 +516,9 @@ function DBGetRunToAutojudging($contest, $ip)
         "where r.contestnumber=$contest and p.contestnumber=r.contestnumber and " .
         "r.runproblem=p.problemnumber and r.runlangnumber=l.langnumber and ".
         "r.contestnumber=l.contestnumber and " .
-        "r.autoip='' order by r.runnumber for update limit 1";
+        // run reivindicada por um autojudge que morreu no meio (sem autoenddate ha mais de 15 min) volta para a fila
+        "(r.autoip='' or (r.runstatus='openrun' and r.autoenddate is null and r.autobegindate is not null and " .
+        "r.autobegindate < " . (time() - 900) . ")) order by r.runnumber for update limit 1";
     $r = DBExec($c, $sql, "DBGetRunToAutoJudging(get run/prob/lang for update)");
     $n = DBnlines($r);
     if ($n < 1) {
