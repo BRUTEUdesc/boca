@@ -60,7 +60,8 @@ sed -i -E \
     -e 's/^pm\.max_spare_servers = .*/pm.max_spare_servers = 3/' "$POOL"
 php-fpm"$PHPV" -t 2>/dev/null
 systemctl enable -q --now "php$PHPV-fpm"
-systemctl restart "php$PHPV-fpm"
+# reload (graceful) aplica php.ini e pool sem derrubar requisições em andamento
+systemctl reload "php$PHPV-fpm"
 
 log "apache -> php$PHPV-fpm"
 a2enmod -q proxy_fcgi setenvif >/dev/null
@@ -70,7 +71,12 @@ for c in /etc/apache2/conf-enabled/php*-fpm.conf; do
     [ "$n" = "php$PHPV-fpm" ] || a2disconf -q "$n"
 done
 a2enconf -q "php$PHPV-fpm"
-apache2ctl configtest 2>&1 | grep -q "Syntax OK"
+apache_test=$(apache2ctl configtest 2>&1) || true
+if ! grep -q "Syntax OK" <<<"$apache_test"; then
+    printf '%s\n' "$apache_test"
+    echo "apache2ctl configtest falhou; apache não foi recarregado"
+    exit 1
+fi
 systemctl enable -q apache2
 systemctl reload-or-restart apache2
 
@@ -79,18 +85,32 @@ PGV=$(pg_lsclusters -h | awk '$2=="main" && $3=="5432" {print $1}' | head -1)
 log "PostgreSQL $PGV"
 PGDIR=/etc/postgresql/$PGV/main
 mkdir -p "$PGDIR/conf.d"
-echo "listen_addresses = '*'" > "$PGDIR/conf.d/000-boca.conf"
+# listen_addresses só vale com restart: reinicia só se este arquivo mudar agora
+PGCONF=$PGDIR/conf.d/000-boca.conf
+PGCONF_WANT="listen_addresses = '*'"
+pg_restart=0
+if [ "$(cat "$PGCONF" 2>/dev/null)" != "$PGCONF_WANT" ]; then
+    printf '%s\n' "$PGCONF_WANT" > "$PGCONF"
+    pg_restart=1
+fi
 HBA=$PGDIR/pg_hba.conf
-# nunca deixar o banco aberto para a internet
-sed -i -E '/^host\s+all\s+all\s+0\.0\.0\.0\/0\s/d' "$HBA"
+# nunca deixar o banco aberto para a internet (IPv4 e IPv6)
+sed -i -E '/^(host|hostssl)\s+all\s+all\s+(0\.0\.0\.0\/0|::\/0)(\s|$)/d' "$HBA"
 for net in "${DB_ALLOWED_NETS[@]}"; do
     grep -qE "^host\s+all\s+all\s+${net//./\\.}\s" "$HBA" ||
         printf 'host\tall\t\tall\t\t%s\t\tmd5\n' "$net" >> "$HBA"
 done
-systemctl restart "postgresql@$PGV-main"
+# pg_hba só precisa de reload (não derruba conexões dos autojudges)
+if [ "$pg_restart" = 1 ] || ! systemctl is-active -q "postgresql@$PGV-main"; then
+    systemctl restart "postgresql@$PGV-main"
+else
+    systemctl reload "postgresql@$PGV-main"
+fi
 
 log "firewall (ufw)"
-ufw status | grep -qE "^5432/tcp\s+ALLOW\s+Anywhere" && ufw delete allow 5432/tcp >/dev/null
+if ufw status | grep -E "^5432/tcp( \(v6\))?\s+ALLOW\s+Anywhere" >/dev/null; then
+    ufw delete allow 5432/tcp >/dev/null
+fi
 for net in "${DB_ALLOWED_NETS[@]}"; do
     ufw allow from "$net" to any port 5432 proto tcp >/dev/null
 done
