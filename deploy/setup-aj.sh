@@ -99,6 +99,7 @@ fi
 systemctl stop bocaautojudge.service 2>/dev/null || true
 
 log "resíduos do maratona-linux antigo"
+# fica: os AJs são PCs do lab, e um AJ novo pode vir da imagem do maratona-linux com essas sobras
 # cron do pacote boca-common (removido, só a config ficou): chama /usr/sbin/boca-fixssh, que não existe
 rm -f /etc/cron.d/cron-boca-fixssh /var/log/boca-fixssh.out /var/log/boca-fixssh.err
 # PPA de outra release (jammy) do maratona-linux: um apt upgrade poderia puxar pacotes de lá
@@ -275,10 +276,6 @@ install -m 0700 "$REPO/deploy/aj/send_ip_to_boca" /usr/sbin/send_ip_to_boca
 for u in bocaautojudge.service send_ip_to_boca.service send_ip_to_boca.timer home-bocajail-tmp.mount; do
     install -m 0644 "$REPO/deploy/aj/$u" /etc/systemd/system/
 done
-# unidades antigas (antes ficavam em /root/send_ip_to_boca + reload-send_ip_to_boca.service)
-if [ -f /etc/systemd/system/reload-send_ip_to_boca.service ]; then
-    rm -f /etc/systemd/system/reload-send_ip_to_boca.service
-fi
 systemctl daemon-reload
 # diretório de trabalho do autojudge com nosymfollow: o root não segue symlink criado pelo time
 # (ver deploy/aj/home-bocajail-tmp.mount, cujo nome fixa o caminho /home/bocajail/tmp)
@@ -289,8 +286,7 @@ findmnt -rn -o OPTIONS -M "$JAIL/tmp" | grep -qw nosymfollow ||
     { echo "$JAIL/tmp não ficou montado com nosymfollow"; exit 1; }
 systemctl enable -q boca-jail-net.service send_ip_to_boca.timer
 systemctl start boca-jail-net.service send_ip_to_boca.timer
-# a unit antiga tinha RemainAfterExit: a instância dela fica "active (exited)" e o timer novo não
-# dispara até o reboot. O restart já roda a versão nova (IP real no servidor); sem rede, só avisa.
+# manda o IP já (sem esperar o timer) com a versão recém-instalada; sem rede, só avisa
 systemctl restart send_ip_to_boca.service ||
     echo "AVISO: send_ip_to_boca falhou (rede?); o timer tenta de novo a cada minuto" >&2
 

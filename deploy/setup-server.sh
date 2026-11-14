@@ -23,8 +23,6 @@ BOCADIR=/var/www/boca
 # SSL + certificado de cliente assinado pela CA abaixo (CN = usuário do banco) + senha SCRAM.
 # Certificado de um AJ novo: deploy/pg-client-cert.sh ajN (e copiar para /root/.postgresql/ do AJ).
 PG_CLIENT_CA_DIR=/root/pg-clientca
-# Regras antigas (por rede/IP) que versões anteriores deste script criavam: removidas do pg_hba e do ufw.
-DB_LEGACY_NETS=("10.20.0.0/16" "200.19.106.0/24" "200.19.106.162/32" "200.19.106.163/32")
 
 PACKAGES=(
     apache2 php-fpm php-cli php-pgsql php-gd php-xml php-zip php-intl php-mbstring
@@ -67,11 +65,6 @@ log "pacotes"
 apt-get update -qq
 apt-get install -y -qq "${PACKAGES[@]}" >/dev/null
 apt-mark manual "${PACKAGES[@]}" >/dev/null
-# metapacote antigo (substituído por este script)
-if dpkg -s boca-udesc-deps >/dev/null 2>&1; then
-    apt-get remove -y -qq boca-udesc-deps >/dev/null
-    log "removido metapacote boca-udesc-deps"
-fi
 
 PHPV=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
 log "PHP $PHPV"
@@ -171,9 +164,6 @@ HBA=$PGDIR/pg_hba.conf
 # nada sem SSL nem sem certificado vindo de fora (IPv4 e IPv6)
 sed -i -E '/^host\s+all\s+all\s+(0\.0\.0\.0\/0|::\/0)(\s|$)/d' "$HBA"
 sed -i -E '/^hostssl\s+all\s+all\s+(0\.0\.0\.0\/0|::\/0)\s/{/clientcert=verify-full/!d}' "$HBA"
-for net in "${DB_LEGACY_NETS[@]}"; do
-    sed -i -E "\#^(host|hostssl)\s+all\s+all\s+${net//./\\.}(\s|$)#d" "$HBA"
-done
 for net in 0.0.0.0/0 ::/0; do
     grep -qE "^hostssl\s+all\s+all\s+${net//./\\.}\s+scram-sha-256\s+clientcert=verify-full" "$HBA" ||
         printf '%-8s%-16s%-16s%-24s%s\n' hostssl all all "$net" "scram-sha-256 clientcert=verify-full" >> "$HBA"
@@ -201,23 +191,14 @@ pg_set password_encryption scram-sha-256
 if [ "${PGV%%.*}" -ge 18 ]; then pg_set log_connections receipt,authentication
 else pg_set log_connections on; fi
 [ "$pg_reload" = 0 ] || psql_q 'SELECT pg_reload_conf()' >/dev/null
-md5roles=$(psql_q "SELECT string_agg(rolname, ' ') FROM pg_authid WHERE rolpassword LIKE 'md5%'")
-if [ -n "$md5roles" ]; then
-    echo "    ATENÇÃO: senha em md5 (não entra com scram-sha-256 no pg_hba): $md5roles"
-    echo "    refazer com: ALTER ROLE <nome> PASSWORD '<a mesma senha>' (com password_encryption = scram-sha-256)"
-fi
+# Ao restaurar roles de um dump de servidor antigo (PostgreSQL até 13 gravava senha em md5), o role
+# não entra com scram-sha-256 no pg_hba. Conferir: SELECT rolname FROM pg_authid WHERE rolpassword
+# LIKE 'md5%'; refazer com ALTER ROLE <nome> PASSWORD '<a mesma senha>'.
 
 log "firewall (ufw)"
 ufw_st=$(ufw status)
 grep -q '^Status: active' <<<"$ufw_st" ||
     echo "    ATENÇÃO: ufw inativo (ligar com: ufw enable)"
-for net in "${DB_LEGACY_NETS[@]}"; do
-    # o ufw mostra o host sem /32
-    re=${net%/32}
-    if grep -E "^5432/tcp\s+ALLOW\s+${re//./\\.}(\s|$)" <<<"$ufw_st" >/dev/null; then
-        ufw delete allow from "$re" to any port 5432 proto tcp >/dev/null
-    fi
-done
 # aberto para qualquer IP: quem protege é o pg_hba (SSL + certificado de cliente + senha)
 grep -E "^5432/tcp\s+ALLOW\s+Anywhere" <<<"$ufw_st" >/dev/null || ufw allow 5432/tcp >/dev/null
 
@@ -298,12 +279,11 @@ $BOCADIR/src/private/webcast.log {
     notifempty
     copytruncate
 }"
-# gratuitous ARP ao subir a interface (estava no sysctl.conf antigo e se perdeu no upgrade para 26.04)
-ifc=$(ip -4 route show default | awk '{for (i = 1; i < NF; i++) if ($i == "dev") {print $(i + 1); exit}}')
+# gratuitous ARP quando a interface sobe ou muda de endereço (p.ex. depois que o CINF migra a VM): o
+# roteador atualiza o MAC na hora. Para arp_notify o kernel usa o maior entre "all" e o da interface,
+# então "all" sozinho cobre todas as interfaces.
 put /etc/sysctl.d/60-arp-notify.conf "# Envia gratuitous ARP quando a interface sobe/muda de endereco (ajuda apos migracao de VM)
-net.ipv4.conf.all.arp_notify = 1
-net.ipv4.conf.default.arp_notify = 1${ifc:+
-net.ipv4.conf.${ifc//./\/}.arp_notify = 1}"
+net.ipv4.conf.all.arp_notify = 1"
 sysctl -q -p /etc/sysctl.d/60-arp-notify.conf
 
 log "verificação"
