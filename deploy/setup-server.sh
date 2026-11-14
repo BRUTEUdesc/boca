@@ -286,6 +286,16 @@ put /etc/sysctl.d/60-arp-notify.conf "# Envia gratuitous ARP quando a interface 
 net.ipv4.conf.all.arp_notify = 1"
 sysctl -q -p /etc/sysctl.d/60-arp-notify.conf
 
+log "migrações do banco (src/private/migratedb.php)"
+# idempotente: cria só as tabelas do fork que faltam (PDF da prova, fila do Polygon) e copia para o banco os
+# PDFs que ainda estão em arquivo. Banco novo: rodar antes o src/private/createdb.php.
+if [ "$(psql_q "SELECT 1 FROM pg_database WHERE datname = 'bocadb'")" = 1 ] &&
+    [ -f "$BOCADIR/src/private/migratedb.php" ] && [ -f "$BOCADIR/.env" ]; then
+    php "$BOCADIR/src/private/migratedb.php" | sed 's/^/    /'
+else
+    echo "    ATENÇÃO: sem bocadb (ou sem $BOCADIR/.env): migrações não rodadas"
+fi
+
 log "verificação"
 code=$(curl -sk -o /dev/null -m 15 -w '%{http_code}' https://localhost/ || true)
 echo "    HTTPS local: $code"

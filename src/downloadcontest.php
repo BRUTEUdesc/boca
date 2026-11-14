@@ -13,42 +13,15 @@ if (!ValidSession()) {
 
 $contest = (int)$_SESSION["usertable"]["contestnumber"];
 $prob = DBGetProblems($_SESSION["usertable"]["contestnumber"]);
-$contest_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest.pdf";
 $is_admin = $_SESSION["usertable"]["usertype"] == "admin";
 
-if ((!$is_admin && count($prob) == 0) || !file_exists($contest_path) || !is_readable($contest_path)) {
+// o PDF fica no banco (contestpdftable); time so baixa depois que os problemas aparecem.
+// Sem buffer de saida: o PDF vai direto para o navegador
+while (ob_get_level() > 0) ob_end_clean();
+if ((!$is_admin && count($prob) == 0) || !DBContestPdfSend($contest, 'pt', 'contest.pdf')) {
     // ainda não liberado ou sem PDF: não é intrusão, só avisa (sem derrubar a sessão)
-    ob_clean();
     http_response_code(404);
     header('Content-Type: text/plain; charset=utf-8');
     echo "Contest PDF not available yet.";
-    exit;
 }
-
-$filePath = $contest_path;
-
-// Verificar se o arquivo existe
-if (file_exists($filePath)) {
-    // Configurar os cabeçalhos apropriados
-    header('Content-Description: File Transfer');
-    header('Content-Type: application/pdf');
-    header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
-    header('Expires: 0');
-    header('Cache-Control: must-revalidate');
-    header('Pragma: public');
-    header('Content-Length: ' . filesize($filePath));
-
-    // Limpar buffer de saída
-    ob_clean();
-    flush();
-
-    // Ler o arquivo e enviar para o navegador
-    readfile($filePath);
-
-    // Finalizar script para evitar qualquer saída adicional
-    exit;
-} else {
-    // Retornar erro se o arquivo não existir
-    http_response_code(404);
-    echo 'File not found';
-}
+exit;

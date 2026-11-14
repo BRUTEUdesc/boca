@@ -79,7 +79,7 @@ if (isset($_POST['Submit2']) && $_POST['Submit2'] == 'Import') {
 		$r = polygon_job_enqueue(array('contest' => $contest, 'number' => $num, 'name' => $t['name'], 'pid' => $t['pid'],
 			'pin' => $pin, 'usernumber' => $_SESSION["usertable"]["usernumber"],
 			'usersitenumber' => $_SESSION["usertable"]["usersitenumber"], 'username' => $_SESSION["usertable"]["username"]));
-		if ($r !== '') $refused[] = $t['name'] . ' (' . ($r === false ? 'could not lock the import queue' : $r) . ')';
+		if ($r !== '') $refused[] = $t['name'] . ' (' . $r . ')';
 	}
 	polygon_start_worker();
 	if (count($refused)) MSGError(polygonMsg('Not queued: ' . implode('; ', $refused)));
