@@ -27,7 +27,7 @@ PG_CLIENT_CA_DIR=/root/pg-clientca
 PACKAGES=(
     apache2 php-fpm php-cli php-curl php-pgsql php-gd php-xml php-zip php-intl php-mbstring
     postgresql postgresql-client python3-matplotlib openssl wget git libany-uri-escape-perl
-    ufw
+    ufw g++
 )
 
 PHP_INI=$(cat <<'EOF'

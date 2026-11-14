@@ -81,6 +81,55 @@ function polygon_extract($zip, $i, $dest)
 	return $ok && hash_file('crc32b', $dest) === sprintf('%08x', $st['crc']);
 }
 
+// compila compare/check.cpp para compare/check (estatico: o AJ so executa, sem g++ por run).
+// Devolve '' ou o motivo da falha com as primeiras linhas do erro do g++.
+function polygon_compile_checker($dir)
+{
+	$gxx = null;
+	foreach (array('/usr/bin', '/usr/local/bin', '/bin') as $d) {
+		if (is_file("$d/g++") && is_executable("$d/g++")) {
+			$gxx = "$d/g++";
+			break;
+		}
+	}
+	if ($gxx === null) {
+		return "g++ nao encontrado no servidor (apt install g++): o checker precisa ser compilado na importacao";
+	}
+	$cmd = array($gxx, '-O2', '-std=c++17', '-static', '-o', 'check', 'check.cpp');
+	if (is_executable('/usr/bin/timeout')) {
+		// 180 s; o timeout mata o grupo todo (cc1plus, as, ld)
+		$cmd = array_merge(array('/usr/bin/timeout', '-k', '10', '180'), $cmd);
+	}
+	// o worker herda o ambiente do PHP-FPM (sem PATH): o g++ acha as/ld pelo PATH
+	$env = array('PATH' => '/usr/local/bin:/usr/bin:/bin', 'LC_ALL' => 'C');
+	if (($t = getenv('TMPDIR')) !== false && $t !== '') {
+		$env['TMPDIR'] = $t;
+	}
+	$desc = array(0 => array('file', '/dev/null', 'r'), 1 => array('file', '/dev/null', 'w'), 2 => array('pipe', 'w'));
+	$p = @proc_open($cmd, $desc, $pipes, $dir, $env);
+	if (!is_resource($p)) {
+		return "nao foi possivel executar o g++ para compilar o checker";
+	}
+	$err = '';
+	while (!feof($pipes[2]) && ($b = fread($pipes[2], 65536)) !== false && $b !== '') {
+		if (strlen($err) < 65536) {
+			$err .= $b;
+		}
+	}
+	fclose($pipes[2]);
+	$rc = proc_close($p);
+	if ($rc == 0 && is_file("$dir/check") && @chmod("$dir/check", 0755)) {
+		return '';
+	}
+	// so as linhas de erro (sem o trecho do fonte que o g++ repete); se nao houver, as primeiras
+	$all = array_values(array_filter(array_map('trim', explode("\n", $err)), 'strlen'));
+	$lines = array_values(preg_grep('/error/i', $all));
+	$lines = array_slice(count($lines) ? $lines : $all, 0, 5);
+	$why = ($rc == 124) ? "tempo esgotado (180 s)" : "exit $rc";
+	return "o checker (check.cpp) nao compilou com g++ -O2 -std=c++17 -static ($why)" .
+		(count($lines) ? ': ' . substr(implode(' | ', $lines), 0, 800) : '');
+}
+
 function polygon_zipdir($z, $base, $rel)
 {
 	foreach (scandir($rel === '' ? $base : "$base/$rel") ?: array() as $f) {
@@ -93,6 +142,10 @@ function polygon_zipdir($z, $base, $rel)
 		} else {
 			// deflate nivel 6 como o python (o padrao do libzip, 9, e ~4x mais lento)
 			$ok = $z->addFile("$base/$r", $r) && $z->setCompressionName($r, ZipArchive::CM_DEFLATE, 6);
+			// o checker compilado vai executavel: o compare/<ext> do AJ o extrai com unzip -j e testa -x
+			if ($ok && $r === 'compare/check') {
+				$ok = $z->setExternalAttributesName($r, ZipArchive::OPSYS_UNIX, (0100755 << 16));
+			}
 		}
 		if (!$ok) {
 			return false;
@@ -233,6 +286,9 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	$zip->close();
 	if (!$ok) {
 		return polygon_convert_fail($tmp, "erro gravando limits/description/compare");
+	}
+	if (($cerr = polygon_compile_checker("$pd/compare")) !== '') {
+		return polygon_convert_fail($tmp, $cerr);
 	}
 
 	$out = "$tmp/Problem_$idx.zip";
