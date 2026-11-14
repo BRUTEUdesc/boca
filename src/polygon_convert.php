@@ -198,6 +198,15 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	if ($ts === null) {
 		return polygon_convert_fail(null, "problem.xml sem judging/testset");
 	}
+	// o template do BOCA so julga com checker sobre stdin/stdout
+	if (count($root->xpath('//interactor') ?: array()) > 0) {
+		return polygon_convert_fail(null, "problema interativo (interactor no problem.xml) nao e suportado pelo BOCA");
+	}
+	foreach (array('input-file' => 'entrada', 'output-file' => 'saida') as $at => $what) {
+		if (trim((string) $judging[$at]) !== '') {
+			return polygon_convert_fail(null, "$what por arquivo ($at=\"" . trim((string) $judging[$at]) . "\" no problem.xml) nao e suportada: o BOCA so usa stdin/stdout");
+		}
+	}
 
 	// limites do primeiro testset: TL em segundos inteiros, com repeticoes (lcm com 1000 ms)
 	$tlms = polygon_xmlint($ts->{'time-limit'}[0]);
