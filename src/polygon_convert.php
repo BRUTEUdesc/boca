@@ -177,7 +177,13 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	}
 	$pname = str_replace('\&', '&', $pname);
 
-	// /var/tmp (disco): o /tmp pode ser tmpfs pequeno e ha pacotes de centenas de MB
+	// /var/tmp (disco): o /tmp pode ser tmpfs pequeno e ha pacotes de centenas de MB.
+	// Sobras de conversao interrompida (processo morto nao roda o shutdown): uma conversao leva minutos
+	foreach (glob('/var/tmp/boca_polygon_*', GLOB_ONLYDIR) ?: array() as $old) {
+		if (@filemtime($old) < time() - 3600) {
+			polygon_rmtree($old);
+		}
+	}
 	$tmp = "/var/tmp/boca_polygon_{$idx}_" . bin2hex(random_bytes(8));
 	if (!@mkdir($tmp, 0700)) {
 		return polygon_convert_fail(null, "nao foi possivel criar $tmp");
