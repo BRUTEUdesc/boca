@@ -59,4 +59,3 @@ debian/
 
 # Ignorar .env
 .env
-src/private/polygonjobs/

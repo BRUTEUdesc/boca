@@ -29,13 +29,11 @@ $colors_file = __DIR__ . '/default_problem_colors.json';
 $default_colors = is_readable($colors_file) ? json_decode(file_get_contents($colors_file), true) : null;
 
 $contest = (int)$_SESSION["usertable"]["contestnumber"];
-$contest_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest.pdf";
-if (file_exists($contest_path) && is_readable($contest_path)) {
+if (DBContestPdfExists($contest, 'pt')) {
 	echo "<br><b>Contest completo:</b> <a href=\"../downloadcontest.php\">contest.pdf</a>";
 	echo "<br>";
 }
-$contest_en_path = "/var/www/boca/src/private/secretcontest/{$contest}/contest-en.pdf";
-if (file_exists($contest_en_path) && is_readable($contest_en_path)) {
+if (DBContestPdfExists($contest, 'en')) {
 	echo "<br><b>Complete contest (en):</b> <a href=\"../downloadencontest.php\">contest-en.pdf</a>";
 	echo "<br>";
 }

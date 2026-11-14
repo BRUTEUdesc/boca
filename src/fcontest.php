@@ -174,6 +174,93 @@ CREATE TABLE \"usertable\" (
 	     "DBCreateUserTable(create user_index2)");
 }
 
+// BRUTE: PDF da prova (caderno completo) no banco, um por contest e idioma ('pt' = contest.pdf, 'en' = contest-en.pdf).
+// Tabela criada por createdb.php (banco novo) ou private/migratedb.php (banco existente). bytea: o PDF tem
+// poucos MB e o ON DELETE CASCADE apaga o conteudo junto com o contest (sem large object orfao).
+function DBCreateContestPdfTable() {
+	$c = DBConnect();
+	$conf = globalconf();
+	if($conf["dbuser"]=="") $conf["dbuser"]="bocauser";
+	DBExec($c, "
+CREATE TABLE IF NOT EXISTS \"contestpdftable\" (
+\"contestnumber\" int4 NOT NULL,	-- (id do concurso)
+\"pdflang\" varchar(10) NOT NULL,	-- (idioma: pt ou en)
+\"pdfdata\" bytea NOT NULL,		-- (o PDF)
+\"pdfsize\" int4 NOT NULL,
+\"updatetime\" int4 DEFAULT EXTRACT(EPOCH FROM now()) NOT NULL, -- (indica a ultima atualizacao no registro)
+CONSTRAINT \"contestpdf_pkey\" PRIMARY KEY (\"contestnumber\", \"pdflang\"),
+CONSTRAINT \"contest_fk\" FOREIGN KEY (\"contestnumber\")
+	REFERENCES \"contesttable\" (\"contestnumber\")
+	ON DELETE CASCADE ON UPDATE CASCADE NOT DEFERRABLE INITIALLY IMMEDIATE)", "DBCreateContestPdfTable(create table)");
+	DBExec($c, "REVOKE ALL ON \"contestpdftable\" FROM PUBLIC", "DBCreateContestPdfTable(revoke public)");
+	DBExec($c, "GRANT ALL ON \"contestpdftable\" TO \"".$conf["dbuser"]."\"", "DBCreateContestPdfTable(grant bocauser)");
+}
+
+function DBContestPdfLang($lang) {
+	return in_array($lang, array('pt', 'en'), true) ? $lang : null;
+}
+
+// true se o contest tem o PDF no idioma (false tambem se a tabela ainda nao existe: falha suave)
+function DBContestPdfExists($contest, $lang) {
+	if (($lang = DBContestPdfLang($lang)) === null) return false;
+	$r = DBExecNonStop(DBConnect(), "select pdfsize from contestpdftable where contestnumber=" . (int)$contest .
+			   " and pdflang='$lang'", "DBContestPdfExists");
+	return $r !== false && DBnlines($r) == 1;
+}
+
+// conteudo do PDF ou false
+function DBContestPdfData($contest, $lang) {
+	if (($lang = DBContestPdfLang($lang)) === null) return false;
+	$c = DBConnect();
+	$r = DBExecNonStop($c, "select pdfdata from contestpdftable where contestnumber=" . (int)$contest .
+			   " and pdflang='$lang'", "DBContestPdfData");
+	if ($r === false || DBnlines($r) != 1) return false;
+	$a = DBRow($r, 0);
+	return pg_unescape_bytea($a['pdfdata']);
+}
+
+// grava (ou troca) o PDF a partir do arquivo $file; so aceita PDF ("%PDF" no inicio) de ate 100 MB
+function DBContestPdfSave($contest, $lang, $file) {
+	if (($lang = DBContestPdfLang($lang)) === null || !is_readable($file)) return false;
+	$size = filesize($file);
+	if ($size === false || $size < 4 || $size > 100 * 1024 * 1024 ||
+	    @file_get_contents($file, false, null, 0, 4) !== "%PDF") return false;
+	$data = file_get_contents($file);
+	if ($data === false) return false;
+	$c = DBConnect();
+	$r = @pg_query_params($c, "insert into contestpdftable (contestnumber, pdflang, pdfdata, pdfsize, updatetime) " .
+			      "values (\$1, \$2, \$3, \$4, EXTRACT(EPOCH FROM now())) on conflict (contestnumber, pdflang) do update " .
+			      "set pdfdata=excluded.pdfdata, pdfsize=excluded.pdfsize, updatetime=excluded.updatetime",
+			      array((int)$contest, $lang, pg_escape_bytea($c, $data), strlen($data)));
+	if ($r === false) {
+		LOGError("DBContestPdfSave: unable to save the contest PDF (contest=" . (int)$contest . ", lang=$lang). " .
+			 "Error=(" . pg_last_error($c) . ")");
+		return false;
+	}
+	return true;
+}
+
+function DBContestPdfDelete($contest, $lang) {
+	if (($lang = DBContestPdfLang($lang)) === null) return false;
+	$r = DBExecNonStop(DBConnect(), "delete from contestpdftable where contestnumber=" . (int)$contest .
+			   " and pdflang='$lang'", "DBContestPdfDelete");
+	return $r !== false && pg_affected_rows($r) == 1;
+}
+
+// envia o PDF ao navegador (downloadcontest.php e downloadencontest.php)
+function DBContestPdfSend($contest, $lang, $filename) {
+	if (($data = DBContestPdfData($contest, $lang)) === false) return false;
+	header('Content-Description: File Transfer');
+	header('Content-Type: application/pdf');
+	header('Content-Disposition: attachment; filename="' . $filename . '"');
+	header('Expires: 0');
+	header('Cache-Control: must-revalidate');
+	header('Pragma: public');
+	header('Content-Length: ' . strlen($data));
+	echo $data;
+	return true;
+}
+
 //////////////////////////////funcoes de usuarios/sites/contests///////////////////////////////////////
 function DBFakeContest() {
 	$c = DBConnect();

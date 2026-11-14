@@ -170,163 +170,144 @@ function polygon_linux_package($problemid, $pin, &$err)
 }
 
 // --- Fila de importacao (admin/polygon.php enfileira, private/polygonworker.php processa em background) ---
-// Um JSON por (contest BOCA, numero do problema) em private/polygonjobs/; reenfileirar o mesmo numero
-// substitui o pedido. Estados: queued, running, done, failed.
+// Tabela polygonjobtable, uma linha por (contest BOCA, numero do problema): reenfileirar o mesmo numero
+// substitui o pedido. Estados: queued, running, done, failed. Criada por createdb.php (banco novo) ou
+// private/migratedb.php (banco existente). Os jobs tem o formato de array usado pela pagina e pelo worker.
 
-function polygon_jobs_dir()
+function DBCreatePolygonJobTable()
 {
-    $d = __DIR__ . '/private/polygonjobs';
-    if (!is_dir($d))
-        @mkdir($d, 0770);
-    return $d;
+    $c = DBConnect();
+    $conf = globalconf();
+    if ($conf["dbuser"] == "")
+        $conf["dbuser"] = "bocauser";
+    DBExec($c, "
+CREATE TABLE IF NOT EXISTS \"polygonjobtable\" (
+\"contestnumber\" int4 NOT NULL,		-- (id do concurso)
+\"problemnumber\" int4 NOT NULL,		-- (numero do problema no BOCA)
+\"problemname\" varchar(20) NOT NULL,		-- (nome curto: a letra)
+\"polygonproblem\" int4 NOT NULL,		-- (id do problema no Polygon)
+\"polygonpin\" varchar(32) DEFAULT '' NOT NULL,	-- (pin do Polygon; apagado ao terminar)
+\"usernumber\" int4 NOT NULL,			-- (admin que pediu)
+\"usersitenumber\" int4 NOT NULL,
+\"username\" varchar(20) NOT NULL,
+\"jobstate\" varchar(10) NOT NULL,		-- (queued, running, done, failed)
+\"jobmsg\" text DEFAULT '' NOT NULL,
+\"jobtries\" int4 DEFAULT 0 NOT NULL,
+\"queuedtime\" int4 NOT NULL,
+\"startedtime\" int4 DEFAULT 0 NOT NULL,
+\"finishedtime\" int4 DEFAULT 0 NOT NULL,
+\"updatetime\" int4 DEFAULT EXTRACT(EPOCH FROM now()) NOT NULL, -- (indica a ultima atualizacao no registro)
+CONSTRAINT \"polygonjob_pkey\" PRIMARY KEY (\"contestnumber\", \"problemnumber\"),
+CONSTRAINT \"contest_fk\" FOREIGN KEY (\"contestnumber\")
+	REFERENCES \"contesttable\" (\"contestnumber\")
+	ON DELETE CASCADE ON UPDATE CASCADE NOT DEFERRABLE INITIALLY IMMEDIATE)", "DBCreatePolygonJobTable(create table)");
+    DBExec($c, "REVOKE ALL ON \"polygonjobtable\" FROM PUBLIC", "DBCreatePolygonJobTable(revoke public)");
+    DBExec($c, "GRANT ALL ON \"polygonjobtable\" TO \"" . $conf["dbuser"] . "\"", "DBCreatePolygonJobTable(grant bocauser)");
 }
 
-// executa $fn com o lock da fila (exclusivo entre a pagina e o worker)
-function polygon_jobs_locked($fn)
+// consulta parametrizada na conexao do BOCA; false (e log) em erro, sem abortar a pagina/o worker
+function polygon_db($sql, $params = array(), $c = null)
 {
-    $fp = @fopen(polygon_jobs_dir() . '/.queue.lock', 'c');
-    if ($fp === false || !flock($fp, LOCK_EX))
-        return false;
-    try {
-        return $fn();
-    } finally {
-        flock($fp, LOCK_UN);
-        fclose($fp);
-    }
+    if ($c === null)
+        $c = DBConnect();
+    $r = @pg_query_params($c, $sql, $params);
+    if ($r === false)
+        LOGError("Polygon import queue: SQL error (" . pg_last_error($c) . ")");
+    return $r;
 }
 
-function polygon_job_file($contest, $number)
+function polygon_job_row($a)
 {
-    return polygon_jobs_dir() . '/c' . (int) $contest . '-p' . (int) $number . '.json';
-}
-
-// gravacao atomica (temporario + rename): quem le nunca ve um JSON pela metade
-function polygon_job_save($job)
-{
-    $f = polygon_job_file($job['contest'], $job['number']);
-    $tmp = $f . '.' . getmypid() . '.new';
-    if (@file_put_contents($tmp, json_encode($job)) === false || !@rename($tmp, $f)) {
-        @unlink($tmp);
-        return false;
-    }
-    @chmod($f, 0660);
-    return true;
+    return array('contest' => (int) $a['contestnumber'], 'number' => (int) $a['problemnumber'],
+                 'name' => $a['problemname'], 'pid' => $a['polygonproblem'], 'pin' => $a['polygonpin'],
+                 'usernumber' => (int) $a['usernumber'], 'usersitenumber' => (int) $a['usersitenumber'],
+                 'username' => $a['username'], 'state' => $a['jobstate'], 'msg' => $a['jobmsg'],
+                 'tries' => (int) $a['jobtries'], 'queued' => (int) $a['queuedtime'],
+                 'started' => (int) $a['startedtime'], 'finished' => ((int) $a['finishedtime'] > 0) ? (int) $a['finishedtime'] : null);
 }
 
 // jobs de um contest (0 = todos), ordenados pela hora em que entraram na fila
 function polygon_jobs_list($contest = 0)
 {
+    $r = ($contest == 0) ? polygon_db("select * from polygonjobtable order by queuedtime, problemnumber") :
+        polygon_db("select * from polygonjobtable where contestnumber=\$1 order by queuedtime, problemnumber", array((int) $contest));
     $a = array();
-    foreach (glob(polygon_jobs_dir() . '/c*-p*.json') ?: array() as $f) {
-        $j = json_decode((string) @file_get_contents($f), true);
-        if (is_array($j) && isset($j['contest'], $j['number'], $j['state'], $j['queued']) && ($contest == 0 || $j['contest'] == $contest))
-            $a[] = $j;
-    }
-    usort($a, function ($x, $y) { return ($x['queued'] <=> $y['queued']) ?: ($x['number'] <=> $y['number']); });
+    if ($r !== false)
+        while (($row = pg_fetch_assoc($r)) !== false)
+            $a[] = polygon_job_row($row);
     return $a;
 }
 
 // enfileira; devolve '' ou o motivo da recusa (o mesmo numero ja esta sendo importado)
 function polygon_job_enqueue($job)
 {
-    return polygon_jobs_locked(function () use ($job) {
-        $old = json_decode((string) @file_get_contents(polygon_job_file($job['contest'], $job['number'])), true);
-        if (is_array($old) && ($old['state'] ?? '') == 'running')
-            return 'problem ' . (int) $job['number'] . ' is being imported right now';
-        $job['state'] = 'queued';
-        $job['msg'] = '';
-        $job['tries'] = 0;
-        $job['queued'] = time();
-        return polygon_job_save($job) ? '' : 'could not write the import queue (' . polygon_jobs_dir() . ')';
-    });
+    $r = polygon_db("insert into polygonjobtable (contestnumber, problemnumber, problemname, polygonproblem, polygonpin, " .
+        "usernumber, usersitenumber, username, jobstate, jobmsg, jobtries, queuedtime, startedtime, finishedtime, updatetime) " .
+        "values (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, 'queued', '', 0, \$9, 0, 0, \$9) " .
+        "on conflict (contestnumber, problemnumber) do update set problemname=excluded.problemname, " .
+        "polygonproblem=excluded.polygonproblem, polygonpin=excluded.polygonpin, usernumber=excluded.usernumber, " .
+        "usersitenumber=excluded.usersitenumber, username=excluded.username, jobstate='queued', jobmsg='', jobtries=0, " .
+        "queuedtime=excluded.queuedtime, startedtime=0, finishedtime=0, updatetime=excluded.updatetime " .
+        "where polygonjobtable.jobstate <> 'running' returning problemnumber",
+        array((int) $job['contest'], (int) $job['number'], (string) $job['name'], (int) $job['pid'], (string) ($job['pin'] ?? ''),
+              (int) $job['usernumber'], (int) $job['usersitenumber'], (string) $job['username'], time()));
+    if ($r === false)
+        return 'could not write the import queue (see the BOCA log)';
+    return (pg_num_rows($r) == 1) ? '' : 'problem ' . (int) $job['number'] . ' is being imported right now';
 }
 
-// pega o proximo job da fila e o marca running; null se nao houver
+// pega o proximo job da fila e o marca running; null se nao houver (SKIP LOCKED: dois nunca pegam o mesmo)
 function polygon_job_next()
 {
-    $r = polygon_jobs_locked(function () {
-        foreach (polygon_jobs_list() as $j) {
-            if ($j['state'] != 'queued')
-                continue;
-            $j['state'] = 'running';
-            $j['tries'] = (int) ($j['tries'] ?? 0) + 1;
-            $j['started'] = time();
-            return polygon_job_save($j) ? $j : null;
-        }
+    $r = polygon_db("update polygonjobtable set jobstate='running', jobtries=jobtries+1, startedtime=\$1, updatetime=\$1 " .
+        "where (contestnumber, problemnumber) = (select contestnumber, problemnumber from polygonjobtable " .
+        "where jobstate='queued' order by queuedtime, problemnumber limit 1 for update skip locked) returning *", array(time()));
+    if ($r === false || pg_num_rows($r) != 1)
         return null;
-    });
-    return is_array($r) ? $r : null;
+    return polygon_job_row(pg_fetch_assoc($r));
 }
 
 // fecha o job (done/failed); so grava se ainda for o mesmo pedido e estiver running
 function polygon_job_finish($job, $state, $msg)
 {
-    polygon_jobs_locked(function () use ($job, $state, $msg) {
-        $cur = json_decode((string) @file_get_contents(polygon_job_file($job['contest'], $job['number'])), true);
-        if (!is_array($cur) || ($cur['queued'] ?? 0) != $job['queued'] || ($cur['state'] ?? '') != 'running')
-            return;
-        $cur['state'] = $state;
-        $cur['msg'] = $msg;
-        $cur['finished'] = time();
-        unset($cur['pin']);
-        polygon_job_save($cur);
-    });
+    polygon_db("update polygonjobtable set jobstate=\$1, jobmsg=\$2, finishedtime=\$3, updatetime=\$3, polygonpin='' " .
+        "where contestnumber=\$4 and problemnumber=\$5 and queuedtime=\$6 and jobstate='running'",
+        array($state, (string) $msg, time(), (int) $job['contest'], (int) $job['number'], (int) $job['queued']));
 }
 
 // so com o lock do worker: job running e resto de worker morto; volta para a fila uma vez, depois failed
 function polygon_jobs_recover()
 {
-    polygon_jobs_locked(function () {
-        foreach (polygon_jobs_list() as $j) {
-            if ($j['state'] != 'running')
-                continue;
-            if ((int) ($j['tries'] ?? 0) >= 2) {
-                $j['state'] = 'failed';
-                $j['msg'] = 'worker interrupted twice';
-                $j['finished'] = time();
-                unset($j['pin']);
-            } else
-                $j['state'] = 'queued';
-            polygon_job_save($j);
-        }
-    });
+    polygon_db("update polygonjobtable set jobstate='failed', jobmsg='worker interrupted twice', finishedtime=\$1, " .
+        "updatetime=\$1, polygonpin='' where jobstate='running' and jobtries >= 2", array(time()));
+    polygon_db("update polygonjobtable set jobstate='queued', updatetime=\$1 where jobstate='running'", array(time()));
 }
 
 function polygon_jobs_pending()
 {
-    foreach (polygon_jobs_list() as $j)
-        if ($j['state'] == 'queued')
-            return true;
-    return false;
+    $r = polygon_db("select 1 from polygonjobtable where jobstate='queued' limit 1");
+    return $r !== false && pg_num_rows($r) > 0;
 }
 
 // apaga os jobs ja terminados do contest
 function polygon_jobs_clear($contest)
 {
-    polygon_jobs_locked(function () use ($contest) {
-        foreach (polygon_jobs_list($contest) as $j)
-            if ($j['state'] == 'done' || $j['state'] == 'failed')
-                @unlink(polygon_job_file($j['contest'], $j['number']));
-    });
+    polygon_db("delete from polygonjobtable where contestnumber=\$1 and jobstate in ('done', 'failed')", array((int) $contest));
 }
 
-// lock de "um worker por vez": devolve o handle ou false se outro worker ja o tem
+// lock de "um worker por vez": advisory lock de sessao na conexao do BOCA (o worker e um processo so; o
+// PostgreSQL solta o lock sozinho se o worker morrer). Devolve a conexao ou false se outro worker ja o tem.
+define('POLYGON_WORKER_LOCK', 727001);
 function polygon_worker_lock()
 {
-    $fp = @fopen(polygon_jobs_dir() . '/.worker.lock', 'c');
-    if ($fp === false)
-        return false;
-    if (!flock($fp, LOCK_EX | LOCK_NB)) {
-        fclose($fp);
-        return false;
-    }
-    return $fp;
+    $c = DBConnect();
+    $r = polygon_db("select pg_try_advisory_lock(\$1) as ok", array(POLYGON_WORKER_LOCK), $c);
+    return ($r !== false && pg_fetch_result($r, 0, 'ok') === 't') ? $c : false;
 }
 
-function polygon_worker_unlock($fp)
+function polygon_worker_unlock($c)
 {
-    flock($fp, LOCK_UN);
-    fclose($fp);
+    polygon_db("select pg_advisory_unlock(\$1)", array(POLYGON_WORKER_LOCK), $c);
 }
 
 // dispara o worker em background; se ja houver um rodando, o novo sai na hora e o antigo pega os jobs novos
