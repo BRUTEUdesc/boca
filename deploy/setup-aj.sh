@@ -17,9 +17,8 @@
 # BOCA_AUTOJUDGE_IP ou do hostname (brute-AJ1 -> aj1); se já existir, não é alterado.
 # O send_ip_to_boca precisa do token em /root/.boca_aj_token (o mesmo do servidor).
 #
-# O que faz: remove resíduos do maratona-linux antigo (cron boca-fixssh, PPA), tira do
-# unattended-upgrades/needrestart o que afeta julgamento, pacotes do host, vendor (phpdotenv),
-# .env 600, /etc/boca.conf, jail em /home/bocajail (debootstrap da mesma versão do host, com
+# O que faz: tira do unattended-upgrades/needrestart o que afeta julgamento, pacotes do host,
+# vendor (phpdotenv), .env 600, /etc/boca.conf, jail em /home/bocajail (debootstrap da mesma versão do host, com
 # gcc/g++/OpenJDK/Kotlin/Python; console/tty/ptmx do jail 600), safeexec (que põe o
 # código dos times num namespace de rede vazio e num /proc com hidepid), bloqueio de rede do uid
 # bocajail, /home/bocajail/tmp com nosymfollow, services (bocaautojudge com MemoryMax/TasksMax,
@@ -97,14 +96,6 @@ fi
 
 # não julgar enquanto o jail é montado/alterado (no fim ele volta se estiver habilitado)
 systemctl stop bocaautojudge.service 2>/dev/null || true
-
-log "resíduos do maratona-linux antigo"
-# fica: os AJs são PCs do lab, e um AJ novo pode vir da imagem do maratona-linux com essas sobras
-# cron do pacote boca-common (removido, só a config ficou): chama /usr/sbin/boca-fixssh, que não existe
-rm -f /etc/cron.d/cron-boca-fixssh /var/log/boca-fixssh.out /var/log/boca-fixssh.err
-# PPA de outra release (jammy) do maratona-linux: um apt upgrade poderia puxar pacotes de lá
-rm -f /etc/apt/sources.list.d/icpc-latam-ubuntu-maratona-linux-*.sources \
-    /etc/apt/sources.list.d/icpc-latam-ubuntu-maratona-linux-*.list
 
 log "atualizações automáticas sem afetar julgamento"
 # Os AJs são atualizados à mão, fora de prova (este script, que também atualiza o jail). O
