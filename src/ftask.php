@@ -222,7 +222,7 @@ function DBFirstSolveTaskKeys($contest, $tasks)
         "join problemtable as p on p.contestnumber=r.contestnumber and p.problemnumber=r.runproblem " .
         "join usertable as u on u.contestnumber=r.contestnumber and u.usernumber=r.usernumber " .
         "and u.usersitenumber=r.runsitenumber " .
-        "where r.contestnumber=$contest and a.yes='t' and r.runstatus ~ 'judged' " .
+        "where r.contestnumber=$contest and a.yes='t' and r.runstatus like '%judged%' " .
         "and u.usertype='team' and u.username not like 'teamext%' and u.username not like 'teamonline%' " .
         "and p.problemcolor != '') as x where rk=1";
     // accessory feature: on any DB error just show no badge, never abort the task page
@@ -297,7 +297,7 @@ function DBOpenTasksSNS($contest,$site,$st,$order='task',$adm=false) {
 	}
 
 	if ($st == 1) 
-		$sql .= " and (t.taskstatus ~ 'opentask' or t.taskstatus ~ 'processing') order by ";
+		$sql .= " and (t.taskstatus like '%opentask%' or t.taskstatus like '%processing%') order by ";
 	else $sql .= " order by ";
 
         if($order == "description")

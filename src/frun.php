@@ -370,7 +370,8 @@ function DBGetRunToAnswerC($number,$site,$contest,$chief) {
 		  "  r.runjudgesite2=" . $_SESSION["usertable"]["usersitenumber"] . ")))))";
 		$tx = "Judge";
 	} else $tx = "Chief";
-	$r = DBExec ($c, $sql . " for update", "DBGetRunToAnswerC(get run/prob/lang for update)");
+	// "of r": so a linha da run (sem travar problema/linguagem, o que seguraria o envio de runs do problema)
+	$r = DBExec ($c, $sql . " for update of r", "DBGetRunToAnswerC(get run/prob/lang for update)");
 	$n = DBnlines($r);
 	if ($n != 1) {
 		DBExec($c, "rollback work", "DBGetRunToAnswerC(rollback)");
@@ -428,7 +429,7 @@ function DBGetRunToAutojudging($contest, $ip) {
 		"r.contestnumber=l.contestnumber and " .
 		// run reivindicada por um autojudge que morreu no meio (sem autoenddate ha mais de 15 min) volta para a fila
 		"(r.autoip='' or (r.runstatus='openrun' and r.autoenddate is null and r.autobegindate is not null and " .
-		"r.autobegindate < " . (time() - 900) . ")) order by r.runnumber for update limit 1";
+		"r.autobegindate < " . (time() - 900) . ")) order by r.runnumber for update of r limit 1";
 	$r = DBExec ($c, $sql, "DBGetRunToAutoJudging(get run/prob/lang for update)");
 	$n = DBnlines($r);
 	if ($n < 1) {
@@ -612,7 +613,7 @@ function DBOpenRunsSNS($contest,$site,$st,$order='run') {
 		if ($order == 'report')
 			$sql .= " and (u.usertype != 'judge')";
 		$sql .= " and (not r.runstatus = 'judged') " .
-			" and not r.runstatus ~ 'deleted' order by ";
+			" and not r.runstatus like '%deleted%' order by ";
 	} else if($st == 2) {
 	  $sql .= " and (not r.runanswer1 = 0) and (not r.runanswer2 = 0) and (not r.runstatus = 'judged') order by ";
 	} else $sql .= " order by ";
@@ -969,7 +970,7 @@ function DBUserRuns($contest,$site,$user) {
 				"where r.contestnumber=$contest and p.contestnumber=r.contestnumber and " .
 				"l.contestnumber=r.contestnumber and l.langnumber=r.runlangnumber and " .
 				"r.contestnumber=a.contestnumber and r.runproblem=p.problemnumber and " .
-				"r.runsitenumber=$site and r.usernumber=$user and not r.runstatus ~ 'deleted' and " .
+				"r.runsitenumber=$site and r.usernumber=$user and not r.runstatus like '%deleted%' and " .
 				"(r.rundatediffans<=$t or (r.runstatus != 'judged' and r.rundatediff<=$t)) and " .
 				"a.answernumber=r.runanswer order by r.runnumber",
 				"DBUserRuns(get run/prob/ans/lang)");
@@ -995,7 +996,7 @@ function DBUserRunsYES($contest,$site,$user) {
 				"from runtable as r, problemtable as p, answertable as a " .
 				"where r.contestnumber=$contest and p.contestnumber=r.contestnumber and " .
 				"r.contestnumber=a.contestnumber and r.runproblem=p.problemnumber and " .
-				"r.runsitenumber=$site and r.usernumber=$user and not r.runstatus ~ 'deleted' and " .
+				"r.runsitenumber=$site and r.usernumber=$user and not r.runstatus like '%deleted%' and " .
 				"(r.rundatediffans<=$t or (r.runstatus != 'judged' and r.rundatediff<=$t)) and " .
 				"a.answernumber=r.runanswer and a.yes='t' order by r.rundatediff",
 				"DBUserRunsYES(get run/prob/ans/lang)");

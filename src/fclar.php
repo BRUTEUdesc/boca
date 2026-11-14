@@ -83,10 +83,10 @@ function DBUserClars($contest,$site,$user) {
                                         "c.claranswer as answer, c.updatetime as updatetime, c.clardatediffans as anstime " .
                              "from clartable as c, problemtable as p " .
                              "where c.contestnumber=$contest and p.contestnumber=c.contestnumber and " .
-                                    "c.clarproblem=p.problemnumber and not clarstatus ~ 'deleted' and " .
-                                    "(c.clardatediffans<=$t or (c.clarstatus !~ 'answered' and c.clardatediff<=$t)) and " .
-	                            "((clarsitenumber=$site and c.usernumber=$user) or (clarstatus ~ 'answeredall') or ".
-				     " (clarstatus ~ 'answeredsite' and clarsitenumber=$site)) order by c.updatetime desc",
+                                    "c.clarproblem=p.problemnumber and not clarstatus like '%deleted%' and " .
+                                    "(c.clardatediffans<=$t or (c.clarstatus not like '%answered%' and c.clardatediff<=$t)) and " .
+	                            "((clarsitenumber=$site and c.usernumber=$user) or (clarstatus like '%answeredall%') or ".
+				     " (clarstatus like '%answeredsite%' and clarsitenumber=$site)) order by c.updatetime desc",
                         "DBUserClars(get clars)");
 	$n = DBnlines($r);
 	$a = array();
@@ -459,7 +459,8 @@ function DBGetClarToAnswerC($number,$site,$contest,$chief) {
 	}
 	else $tx = "Judge is answering";
 
-	$r = DBExec($c, $sql . " for update", "DBGetClarToAnswerC(get clar/prob for update)");
+	// "of c": so a linha da clar (sem travar o problema, o que seguraria o envio de clars do problema)
+	$r = DBExec($c, $sql . " for update of c", "DBGetClarToAnswerC(get clar/prob for update)");
 	$n = DBnlines($r);
 	if ($n != 1) {
 		DBExec($c, "rollback work", "DBGetClarToAnswerC(rollback)");
@@ -524,7 +525,7 @@ function DBOpenClarsSNS($contest,$site,$st,$order='clar') {
 	}
 
 	if ($st == 1) 
-		$sql .= " and not c.clarstatus ~ 'answered' and not c.clarstatus ~ 'deleted' order by ";
+		$sql .= " and not c.clarstatus like '%answered%' and not c.clarstatus like '%deleted%' order by ";
 	else $sql .= " order by "; 
 
         if($order == "site")
