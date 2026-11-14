@@ -74,6 +74,8 @@ umask(0022);
 $cache = $tmpdir . $ds . "bocacache.d";
 cleardir($cache);
 @mkdir($cache);
+// so o root usa o cache (pacotes cifrados com chave aleatoria em memoria); fica dentro do /bocajail
+@chmod($cache, 0700);
 $key=md5(mt_rand() . rand() . mt_rand());
 
 // Teto de tempo dos scripts do pacote (compile/run/compare), que rodam como root. Sem ele, um script
