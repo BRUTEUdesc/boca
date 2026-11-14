@@ -729,6 +729,7 @@ To replace the data of a problem, proceed as if it did not exist (data will be r
 
 	 <br><br><br><center>To build a problem package from files, use this link:
       <input type="submit" name="Submit5" value="Build">
+      <br><br>To import problems directly from Polygon: <a href="polygon.php">Import from Polygon</a>
 </center>
 </form>
 
