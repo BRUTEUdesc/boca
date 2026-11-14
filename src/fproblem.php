@@ -336,7 +336,10 @@ function DBNewProblem($contestnumber, $param, $c=null) {
   if ($inputfilepath != "" && is_polygon_package($inputfilepath)) {
     $converted = convert_polygon_to_boca($inputfilepath, $name);
     if ($converted === false) {
-      MSGError("Error converting polygon package to BOCA package.");
+      // motivo (checker que nao compila, problema interativo...) sem aspas/barras/tags, que quebrariam o alert()
+      $why = str_replace(array("'", '"', "\\", "<", ">", "\r", "\n"), array('', '', '', '', '', ' ', ' '),
+                         (string) ($GLOBALS['polygon_convert_error'] ?? ''));
+      MSGError("Error converting polygon package to BOCA package." . ($why !== '' ? " " . $why : ""));
       ForceLoad("problem.php");
       exit;
     }
