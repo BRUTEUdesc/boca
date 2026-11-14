@@ -74,6 +74,8 @@ umask(0022);
 $cache = $tmpdir . $ds . "bocacache.d";
 cleardir($cache);
 @mkdir($cache);
+// so o root usa o cache (pacotes cifrados com chave aleatoria em memoria); fica dentro do /bocajail
+@chmod($cache, 0700);
 $key=md5(mt_rand() . rand() . mt_rand());
 
 // Teto de tempo dos scripts do pacote (compile/run/compare), que rodam como root. Sem ele, um script
@@ -179,6 +181,10 @@ while(42) {
     echo "Getting problem package file from local cache: " . $cache . $ds . $run["inputoid"] . "." . $run["inputname"] . "\n";
     $s = file_get_contents($cache .	$ds . $run["inputoid"]	. "." . $run["inputname"]);
     file_put_contents($dir . $ds . $run["inputname"], decryptData($s,$key));
+    // como no download do banco (abaixo): o zip tem as saidas esperadas e, em Python/Java/Kotlin,
+    // o chroot e o /bocajail inteiro, com este diretorio visivel para o time
+    @chmod($dir . $ds . $run["inputname"], 0600);
+    @chown($dir . $ds . $run["inputname"],"root");
     $basename=$basenames[$run['inputoid']. "." . $run["inputname"]];
   } else {
     $flocal = '/root/icpc-latam-packages/' . trim($run["problemname"]) . ".zip"; //cassiopc: HARDCODED FOR ICPC 2017
@@ -363,6 +369,10 @@ while(42) {
   system('touch allout');
   @unlink('allerr');
   system('touch allerr');
+  // so o root le: o allerr junta a saida do checker de cada teste ("expected X, found Y") e,
+  // em Python/Java/Kotlin, o chroot e o /bocajail inteiro, com este diretorio visivel para o time
+  @chmod('allout', 0600);
+  @chmod('allerr', 0600);
 
   chmod($script, 0700);
   $ajtl = max(1, (int) trim($limits[$basename][$run["extension"]][0]));
@@ -438,6 +448,10 @@ while(42) {
 	DBGiveUpRunAutojudging($contest, $site, $number, $ip, "error: chown/chmod failed for output (99)");
 	continue;
       }
+      // entradas so para o root, como output/ e compare/: o run copia a entrada para stdin0 (como root)
+      // antes do safeexec, entao o time nao precisa de input/ (e em Python/Java o enxergaria inteiro)
+      if(is_dir($dir . $ds . 'input') && (!@chmod($dir . $ds . 'input', 0700) || !@chown($dir . $ds . 'input', 'root')))
+	echo "WARN: failed to chown/chmod the input folder\n";
     } else {
       echo "Failed to unzip the file (inputs) -- please check the problem package\n";
       DBGiveUpRunAutojudging($contest, $site, $number, $ip, "error: problem package file is invalid (8)");
@@ -545,6 +559,9 @@ while(42) {
 	  }
 	  if(is_file($dir . $ds . 'output' . $ds . $file)) {
 	    @unlink($dir . $ds . 'compout');
+	    // criado antes com 0600: o ">compout" do shell mantem o modo (saida do checker, so para o root)
+	    @touch($dir . $ds . 'compout');
+	    @chmod($dir . $ds . 'compout', 0600);
 	    $ex = ajtimeout(600) . escapeshellcmd($scriptcomp) ." ".
 	      escapeshellarg($dir . $ds . "team" . $ds . $file)." ".
 	      escapeshellarg($dir . $ds . "output" . $ds . $file)." ".
