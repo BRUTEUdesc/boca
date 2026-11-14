@@ -231,7 +231,7 @@ function DBBalloon($contest, $site, $user, $problem, $localsite=true, $c=null) {
   $r = DBExec($c, "select r.rundatediff as time, a.yes as yes from " .
 	      "runtable as r, answertable as a where r.runanswer=a.answernumber and " .
 	      "a.contestnumber=$contest and r.usernumber=$user and r.runproblem=$problem and " .
-	      "r.contestnumber=$contest and r.runsitenumber=$site and (r.runstatus ~ 'judged' or r.runstatus ~ 'judged+') and " .
+	      "r.contestnumber=$contest and r.runsitenumber=$site and r.runstatus like '%judged%' and " .
 	      "r.rundatediff>=0 " . 
 	      "and r.rundatediff<=$tf " .
 	      "and r.rundatediffans<=$ta " . 
@@ -243,7 +243,7 @@ function DBBalloon($contest, $site, $user, $problem, $localsite=true, $c=null) {
   }
   return false;
 }
-function DBRecentNews($contest, $site, $verifylastmile, $minutes=3) {
+function DBRecentNews($contest, $site, $verifylastmile, $minutes=3, $onlypending=false) {
   if (($b = DBSiteInfo($contest, $site)) == null)
     exit;
   if (($blocal = DBSiteInfo($contest, $_SESSION["usertable"]["usersitenumber"])) == null)
@@ -260,14 +260,16 @@ function DBRecentNews($contest, $site, $verifylastmile, $minutes=3) {
     $tf = $b["siteduration"];
   }
 
+  // $onlypending: so as runs ainda sem resposta visivel (fut='t'), as unicas que DBScoreSite usa
+  $pend = $onlypending ? "and r.rundatediffans>$ta " : "";
   $c = DBConnect();
   $r = DBExec($c, "select a.yes as yes, p.problemcolor as color, p.problemcolorname as colorname, u.userfullname as userfullname, " .
 	      "u.usernumber as usernumber, p.problemnumber as problemnumber, p.problemname, (r.rundatediffans>$ta) as fut, min(r.rundatediff) as time from " .
 	      "runtable as r, answertable as a, problemtable as p, usertable as u where r.runanswer=a.answernumber and " .
 	      "p.contestnumber=$contest and a.contestnumber=$contest and r.usernumber = u.usernumber and u.usertype='team' and " .
-	      "p.problemnumber=r.runproblem and r.contestnumber=$contest and r.runsitenumber=$site and u.userenabled='t' and (not r.runstatus ~ 'deleted') and " .
+	      "p.problemnumber=r.runproblem and r.contestnumber=$contest and r.runsitenumber=$site and u.userenabled='t' and (not r.runstatus like '%deleted%') and " .
 	      "r.rundatediff>=$taa and r.rundatediff<=$tf and r.rundatediff<=$ta and u.contestnumber=$contest and u.usersitenumber=$site and " . 
-	      "((a.yes='t' and r.rundatediffans<=$ta) or (r.rundatediffans>$ta)) " .
+	      "((a.yes='t' and r.rundatediffans<=$ta) or (r.rundatediffans>$ta)) " . $pend .
 	      "group by a.yes,p.problemcolor,p.problemcolorname,p.problemname,u.userfullname,u.usernumber,p.problemnumber,fut order by time", "DBRecentNews(get runs)");
   $n = DBnlines($r);
   $a = array();
@@ -327,7 +329,7 @@ function DBScoreSite($contest, $site, $verifylastmile, $hor=-1, $data=null) {
 		"r.rundatediff as time, r.rundatediffans as anstime, a.yes as yes, r.runanswer as answer from " .
 		"runtable as r, answertable as a, problemtable as p where r.runanswer=a.answernumber and " .
 		"a.contestnumber=$contest and p.problemnumber=r.runproblem and p.contestnumber=$contest and " .
-		"r.contestnumber=$contest and r.runsitenumber=$site and (r.runstatus ~ 'judged' or r.runstatus ~ 'judged+') and " .
+		"r.contestnumber=$contest and r.runsitenumber=$site and r.runstatus like '%judged%' and " .
 		"r.rundatediff>=0 and r.rundatediff<=$tf and r.rundatediffans<=$ta " . 
 		"order by r.usernumber, r.runproblem, r.rundatediff", "DBScoreSite(get runs)");
     $n = DBnlines($r);
@@ -393,7 +395,7 @@ function DBScoreSite($contest, $site, $verifylastmile, $hor=-1, $data=null) {
   }
 
   if($data==null) {
-    $aa = DBRecentNews($contest, $site, $verifylastmile, $ta);
+    $aa = DBRecentNews($contest, $site, $verifylastmile, $ta, true);
     $data0['aa']=$aa;
   } else $aa=$data['aa'];
 

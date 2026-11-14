@@ -172,7 +172,9 @@ $contestfile = $contestfile .
 
 function LocalGetRuns($contest,$site,$st,$extraquery,$order='run') {
 	$c = DBConnect();
-	$sql = "select distinct r.runnumber as number, r.rundatediff as timestamp, " .
+	// sem DISTINCT: os joins sao todos pela PK, cada run gera uma linha so (o desempate por runnumber
+	// no ORDER BY mantem a mesma ordem que o sort do DISTINCT dava)
+	$sql = "select r.runnumber as number, r.rundatediff as timestamp, " .
 		"p.problemname as problem, r.runstatus as status, " .
 		"a.yes as yes, u.username as username, " .
 		"a.runanswer as answer " .
@@ -205,7 +207,7 @@ function LocalGetRuns($contest,$site,$st,$extraquery,$order='run') {
 		if ($order == 'report')
 			$sql .= " and (u.usertype != 'judge')";
 		$sql .= " and (not r.runstatus = 'judged') " .
-			" and not r.runstatus ~ 'deleted' order by ";
+			" and not r.runstatus like '%deleted%' order by ";
 	} else if($st == 2) {
 	  $sql .= " and (not r.runanswer1 = 0) and (not r.runanswer2 = 0) and (not r.runstatus = 'judged') order by ";
 	} else $sql .= " order by ";
@@ -228,7 +230,7 @@ function LocalGetRuns($contest,$site,$st,$extraquery,$order='run') {
 	if ($st == 1 || $order == "report")
 		$sql .= "r.runnumber";
 	else
-		$sql .= "r.rundatediff desc";
+		$sql .= "r.rundatediff desc, r.runnumber";
 
 	$r = DBExec($c, $sql, "DBOpenRunsSNS(get run/prob/lang/ans)");
 

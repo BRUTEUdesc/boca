@@ -471,7 +471,7 @@ function DBSiteEndNow ($contest, $site, $w=0) {
         DBExec($c, "begin work");
 	DBExec($c, "lock table runtable");
 	$a = DBGetRow("select max(rundate) as t from runtable where contestnumber=$contest and ".
-			"runsitenumber=$site and not runstatus ~ 'deleted'", 0);
+			"runsitenumber=$site and not runstatus like '%deleted%'", 0);
 	if($a["t"] >= $t) {
 		LOGLevel("Unable to stop a contest before an existing run",2);
 		MSGError("Impossible to stop a contest before an existing run");
