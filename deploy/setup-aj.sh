@@ -37,7 +37,7 @@ MIRROR=http://archive.ubuntu.com/ubuntu
 
 HOST_PACKAGES=(
     php-cli php-pgsql php-zip php-mbstring php-xml composer git
-    gcc libc6-dev debootstrap unzip curl ca-certificates python3 python3-requests iptables
+    gcc g++ libc6-dev debootstrap unzip curl ca-certificates python3 python3-requests iptables
 )
 JAIL_PACKAGES=(gcc g++ "$JDK_PKG" python3)
 # --------------------------------------------------------------------------------------------

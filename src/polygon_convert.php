@@ -95,7 +95,7 @@ function polygon_compile_checker($dir)
 	if ($gxx === null) {
 		return "g++ nao encontrado no servidor (apt install g++): o checker precisa ser compilado na importacao";
 	}
-	$cmd = array($gxx, '-O2', '-std=c++17', '-static', '-o', 'check', 'check.cpp');
+	$cmd = array($gxx, '-O2', '-std=c++23', '-static', '-o', 'check', 'check.cpp');
 	if (is_executable('/usr/bin/timeout')) {
 		// 180 s; o timeout mata o grupo todo (cc1plus, as, ld)
 		$cmd = array_merge(array('/usr/bin/timeout', '-k', '10', '180'), $cmd);
@@ -126,7 +126,7 @@ function polygon_compile_checker($dir)
 	$lines = array_values(preg_grep('/error/i', $all));
 	$lines = array_slice(count($lines) ? $lines : $all, 0, 5);
 	$why = ($rc == 124) ? "tempo esgotado (180 s)" : "exit $rc";
-	return "o checker (check.cpp) nao compilou com g++ -O2 -std=c++17 -static ($why)" .
+	return "o checker (check.cpp) nao compilou com g++ -O2 -std=c++23 -static ($why)" .
 		(count($lines) ? ': ' . substr(implode(' | ', $lines), 0, 800) : '');
 }
 
