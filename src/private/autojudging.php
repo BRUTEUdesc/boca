@@ -179,6 +179,10 @@ while(42) {
     echo "Getting problem package file from local cache: " . $cache . $ds . $run["inputoid"] . "." . $run["inputname"] . "\n";
     $s = file_get_contents($cache .	$ds . $run["inputoid"]	. "." . $run["inputname"]);
     file_put_contents($dir . $ds . $run["inputname"], decryptData($s,$key));
+    // como no download do banco (abaixo): o zip tem as saidas esperadas e, em Python/Java/Kotlin,
+    // o chroot e o /bocajail inteiro, com este diretorio visivel para o time
+    @chmod($dir . $ds . $run["inputname"], 0600);
+    @chown($dir . $ds . $run["inputname"],"root");
     $basename=$basenames[$run['inputoid']. "." . $run["inputname"]];
   } else {
     $flocal = '/root/icpc-latam-packages/' . trim($run["problemname"]) . ".zip"; //cassiopc: HARDCODED FOR ICPC 2017
