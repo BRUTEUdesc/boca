@@ -85,17 +85,24 @@ function polygon_extract($zip, $i, $dest)
 // Devolve '' ou o motivo da falha com as primeiras linhas do erro do g++.
 function polygon_compile_checker($dir)
 {
+	return polygon_compile($dir, 'g++', array('-O2', '-std=c++23', '-static'), 'check', 'check.cpp', 'o checker');
+}
+
+// compila $dir/$src para $dir/$out com $cc (g++ ou gcc) e $flags, sem shell, com PATH fixo e
+// timeout de 180 s; $what nomeia o programa nas mensagens. Devolve '' ou o motivo da falha.
+function polygon_compile($dir, $cc, $flags, $out, $src, $what)
+{
 	$gxx = null;
 	foreach (array('/usr/bin', '/usr/local/bin', '/bin') as $d) {
-		if (is_file("$d/g++") && is_executable("$d/g++")) {
-			$gxx = "$d/g++";
+		if (is_file("$d/$cc") && is_executable("$d/$cc")) {
+			$gxx = "$d/$cc";
 			break;
 		}
 	}
 	if ($gxx === null) {
-		return "g++ nao encontrado no servidor (apt install g++): o checker precisa ser compilado na importacao";
+		return "$cc nao encontrado no servidor (apt install $cc): $what precisa ser compilado na importacao";
 	}
-	$cmd = array($gxx, '-O2', '-std=c++23', '-static', '-o', 'check', 'check.cpp');
+	$cmd = array_merge(array($gxx), $flags, array('-o', $out, $src));
 	if (is_executable('/usr/bin/timeout')) {
 		// 180 s; o timeout mata o grupo todo (cc1plus, as, ld)
 		$cmd = array_merge(array('/usr/bin/timeout', '-k', '10', '180'), $cmd);
@@ -108,7 +115,7 @@ function polygon_compile_checker($dir)
 	$desc = array(0 => array('file', '/dev/null', 'r'), 1 => array('file', '/dev/null', 'w'), 2 => array('pipe', 'w'));
 	$p = @proc_open($cmd, $desc, $pipes, $dir, $env);
 	if (!is_resource($p)) {
-		return "nao foi possivel executar o g++ para compilar o checker";
+		return "nao foi possivel executar o $cc para compilar $what";
 	}
 	$err = '';
 	while (!feof($pipes[2]) && ($b = fread($pipes[2], 65536)) !== false && $b !== '') {
@@ -118,7 +125,7 @@ function polygon_compile_checker($dir)
 	}
 	fclose($pipes[2]);
 	$rc = proc_close($p);
-	if ($rc == 0 && is_file("$dir/check") && @chmod("$dir/check", 0755)) {
+	if ($rc == 0 && is_file("$dir/$out") && @chmod("$dir/$out", 0755)) {
 		return '';
 	}
 	// so as linhas de erro (sem o trecho do fonte que o g++ repete); se nao houver, as primeiras
@@ -126,7 +133,7 @@ function polygon_compile_checker($dir)
 	$lines = array_values(preg_grep('/error/i', $all));
 	$lines = array_slice(count($lines) ? $lines : $all, 0, 5);
 	$why = ($rc == 124) ? "tempo esgotado (180 s)" : "exit $rc";
-	return "o checker (check.cpp) nao compilou com g++ -O2 -std=c++23 -static ($why)" .
+	return "$what ($src) nao compilou com $cc " . implode(' ', $flags) . " ($why)" .
 		(count($lines) ? ': ' . substr(implode(' | ', $lines), 0, 800) : '');
 }
 
@@ -143,7 +150,8 @@ function polygon_zipdir($z, $base, $rel)
 			// deflate nivel 6 como o python (o padrao do libzip, 9, e ~4x mais lento)
 			$ok = $z->addFile("$base/$r", $r) && $z->setCompressionName($r, ZipArchive::CM_DEFLATE, 6);
 			// o checker compilado vai executavel: o compare/<ext> do AJ o extrai com unzip -j e testa -x
-			if ($ok && $r === 'compare/check') {
+			// (idem o interactor e o launcher dos interativos, que o run/<ext> extrai do zip)
+			if ($ok && in_array($r, array('compare/check', 'run/interactor', 'run/interact'), true)) {
 				$ok = $z->setExternalAttributesName($r, ZipArchive::OPSYS_UNIX, (0100755 << 16));
 			}
 		}
@@ -167,6 +175,8 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	if (!is_dir($tpl)) {
 		return polygon_convert_fail(null, "template nao encontrado em $tpl");
 	}
+	// interativo: run/ e compare/ deste diretorio substituem os do template (o resto e igual)
+	$itpl = __DIR__ . '/private/polygontemplate-interactive';
 	$zip = new ZipArchive();
 	if (!is_string($zipfile) || !is_file($zipfile) || filesize($zipfile) == 0 || $zip->open($zipfile, ZipArchive::RDONLY) !== true) {
 		return polygon_convert_fail(null, "arquivo zip invalido");
@@ -198,9 +208,24 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	if ($ts === null) {
 		return polygon_convert_fail(null, "problem.xml sem judging/testset");
 	}
-	// o template do BOCA so julga com checker sobre stdin/stdout
+	// interativo: <assets><interactor><source path="files/interactor.cpp" type="cpp.*"/>. O fonte vai
+	// para run/interactor.cpp (com o testlib.h do pacote) e e compilado estatico para run/interactor,
+	// como o checker; run/ e compare/ vem do template interativo. So stdin/stdout, como o normal.
+	$isrc = null;
 	if (count($root->xpath('//interactor') ?: array()) > 0) {
-		return polygon_convert_fail(null, "problema interativo (interactor no problem.xml) nao e suportado pelo BOCA");
+		$inters = $root->xpath('/problem/assets/interactor') ?: array();
+		$is = (count($inters) == 1) ? $inters[0]->source[0] : null;
+		$isrc = ($is === null) ? '' : polygon_normname((string) $is['path']);
+		$ity = ($is === null) ? '' : (string) $is['type'];
+		if ($isrc === '' || !isset($ents[$isrc])) {
+			return polygon_convert_fail(null, "problema interativo: fonte do interactor ('$isrc') nao encontrado no pacote");
+		}
+		if (strncmp($ity, 'cpp.', 4) != 0) {
+			return polygon_convert_fail(null, "problema interativo: interactor em '$ity'; so interactor em C++ (testlib) e suportado");
+		}
+		if (!is_file("$itpl/run/interact.c")) {
+			return polygon_convert_fail(null, "template interativo nao encontrado em $itpl");
+		}
 	}
 	foreach (array('input-file' => 'entrada', 'output-file' => 'saida') as $at => $what) {
 		if (trim((string) $judging[$at]) !== '') {
@@ -252,6 +277,9 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	}
 	$pd = "$tmp/Problem_$idx";
 	$ok = polygon_copytree($tpl, $pd);
+	if ($isrc !== null) {
+		$ok = $ok && polygon_copytree($itpl, $pd); // sobrescreve run/* e compare/*
+	}
 	foreach (array('input', 'output', 'description', 'limits', 'compare', 'run') as $d) {
 		$ok = $ok && (is_dir("$pd/$d") || @mkdir("$pd/$d", 0755));
 	}
@@ -292,12 +320,27 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 		&& polygon_extract($zip, $ents['check.cpp'], "$pd/compare/check.cpp")
 		&& polygon_extract($zip, $ents['files/testlib.h'], "$pd/compare/testlib.h")
 		&& polygon_extract($zip, $ents['statements/.pdf/portuguese/problem.pdf'], "$pd/description/$idx.pdf");
+	if ($ok && $isrc !== null) {
+		$ok = polygon_extract($zip, $ents[$isrc], "$pd/run/interactor.cpp")
+			&& polygon_extract($zip, $ents['files/testlib.h'], "$pd/run/testlib.h");
+	}
 	$zip->close();
 	if (!$ok) {
 		return polygon_convert_fail($tmp, "erro gravando limits/description/compare");
 	}
 	if (($cerr = polygon_compile_checker("$pd/compare")) !== '') {
 		return polygon_convert_fail($tmp, $cerr);
+	}
+	// interativo: interactor e launcher estaticos no pacote (o AJ so executa; o run/<ext> compila
+	// das fontes do pacote se o binario nao executar la)
+	if ($isrc !== null) {
+		$cerr = polygon_compile("$pd/run", 'g++', array('-O2', '-std=c++23', '-static'), 'interactor', 'interactor.cpp', 'o interactor');
+		if ($cerr === '') {
+			$cerr = polygon_compile("$pd/run", 'gcc', array('-O2', '-static'), 'interact', 'interact.c', 'o launcher dos interativos');
+		}
+		if ($cerr !== '') {
+			return polygon_convert_fail($tmp, $cerr);
+		}
 	}
 
 	$out = "$tmp/Problem_$idx.zip";
