@@ -24,34 +24,10 @@ function convert_polygon_to_boca($inputfilepath, $letter)
         return false;
     }
 
-    $inputArg = escapeshellarg($inputfilepath);
-    $letterArg = escapeshellarg($letter);
-
-    $baseDir = "/var/www/boca-problem-builder";
-    $logFile = $baseDir . "/zip_packages/Problem_" . trim($letter) . ".log";
-
-    $tempZip = $inputArg . ".zip";
-    $command_copy_zip = "cp $inputArg $tempZip";
-    shell_exec($command_copy_zip);
-
-    $JAVA_TL_FACTOR = 3;
-    $PYTHON_TL_FACTOR = 3;
-
-    $outputPath = "$baseDir/zip_packages/Problem_" . trim($letter) . ".zip";
-    $outputFilename = "Problem_" . trim($letter) . ".zip";
-    // apaga o zip de uma conversao anterior, para nunca importar um pacote velho se esta falhar
-    @unlink($outputPath);
-
-    $command = "cd $baseDir && python3 make_from_full_package.py $letterArg $tempZip $JAVA_TL_FACTOR $PYTHON_TL_FACTOR --no-backup --zip-only > " . escapeshellarg($logFile) . " 2>&1";
-    $rc = -1;
-    exec($command, $cmdOutput, $rc);
-    @unlink($inputfilepath . ".zip");
-
-    if ($rc !== 0) {
-        return false;
-    }
-
-    return file_exists($outputPath) ? array($outputPath, $outputFilename) : false;
+    // conversao em PHP (polygon_convert.php); fatores de TL de java e python = 3 x C/C++,
+    // como no boca-problem-builder. O motivo de falha vai para o log (LOGError).
+    require_once __DIR__ . '/polygon_convert.php';
+    return polygon_convert_package($inputfilepath, $letter, 3, 3);
 }
 
 // eof
