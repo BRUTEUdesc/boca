@@ -95,50 +95,31 @@ function ajtimedout($rc) {
   return $rc == 124 || $rc == 137;
 }
 
-// BRUTE: sinal de vida enquanto julga uma run (ver DBGetRunToAutojudging em frun.php): processo filho que so
-// atualiza runtable.autoheartbeat a cada 30 s, com conexao propria ao banco. Ele para quando o pai o encerra (no
-// comeco da proxima volta), quando o pai morre, quando a run deixa de ser deste autojudge (terminou ou foi
-// retomada por outro) ou depois de 1 h (teto: se o pai travar fora de uma etapa com timeout, a run volta para a
-// fila 2 min depois). Sai sempre por SIGKILL: um exit do PHP fecharia a conexao com o banco herdada do pai.
-// Sem pcntl/posix ou sem a coluna no banco: nao ha filho e vale a regra antiga (15 min).
+// BRUTE: sinal de vida enquanto julga uma run (ver DBGetRunToAutojudging em frun.php): private/ajheartbeat.php,
+// processo proprio que so atualiza runtable.autoheartbeat a cada 30 s. Processo novo (proc_open), nao fork: um
+// filho do PHP herdaria a conexao TLS do pai com o banco e a corromperia. Ele para quando o pai o encerra (no
+// comeco da proxima volta), quando o pai morre, quando a run deixa de ser deste autojudge ou depois de 1 h.
+// Sem a coluna no banco (ou se nao der para lancar): nao ha sinal e vale a regra antiga (15 min).
 function ajbeat_start($contest, $site, $number, $ip) {
-  if (!function_exists('pcntl_fork') || !function_exists('posix_getppid') || !DBRunHasHeartbeat(DBConnect()))
-    return 0;
-  $ppid = getmypid();
-  $pid = @pcntl_fork();
-  if ($pid != 0) return $pid > 0 ? $pid : 0;
-  $conf = globalconf();
-  $cs = "connect_timeout=10 " . ($conf["dblocal"] == "true" ? "" : "host=" . $conf["dbhost"] . " port=" . $conf["dbport"] . " ") .
-    "dbname=" . $conf["dbname"] . " user=" . $conf["dbuser"] . " password=" . $conf["dbpass"];
-  $sql = "update runtable set autoheartbeat=extract(epoch from now())::int where contestnumber=" . (int)$contest .
-    " and runsitenumber=" . (int)$site . " and runnumber=" . (int)$number . " and autoip='" . str_replace("'", "''", $ip) .
-    "' and autoenddate is null";
-  $t0 = time();
-  $cc = false;
-  while (posix_getppid() == $ppid && time() - $t0 < 3600) {
-    if ($cc === false) $cc = @pg_connect($cs, PGSQL_CONNECT_FORCE_NEW);
-    if ($cc !== false) {
-      $r = @pg_query($cc, $sql);
-      if ($r === false) { @pg_close($cc); $cc = false; } // tenta de novo (e reconecta) na proxima volta
-      else if (pg_affected_rows($r) == 0) break;
-    }
-    sleep(30);
-  }
-  posix_kill(posix_getpid(), SIGKILL);
-  exit(0);
+  if (!function_exists('proc_open') || !DBRunHasHeartbeat(DBConnect()))
+    return null;
+  $h = @proc_open(array(PHP_BINARY, __DIR__ . '/ajheartbeat.php', (string)(int)$contest, (string)(int)$site,
+      (string)(int)$number, (string)$ip, (string)getmypid()),
+    array(0 => array('file', '/dev/null', 'r'), 1 => array('file', '/dev/null', 'w'), 2 => STDERR), $pipes);
+  return is_resource($h) ? $h : null;
 }
-function ajbeat_stop(&$pid) {
-  if ($pid > 0) {
-    @posix_kill($pid, SIGKILL);
-    @pcntl_waitpid($pid, $st);
+function ajbeat_stop(&$h) {
+  if (is_resource($h)) {
+    @proc_terminate($h, 9);
+    @proc_close($h);
   }
-  $pid = 0;
+  $h = null;
 }
 
 $cf = globalconf();
 $ip = $cf["ip"];
 $prevsleep=0;
-$ajbeat = 0;
+$ajbeat = null;
 //$dodebug=1;
 while(42) {
   ajbeat_stop($ajbeat); // run anterior ja respondida (ou abandonada)
