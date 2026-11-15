@@ -201,6 +201,56 @@ CONSTRAINT \"contest_fk\" FOREIGN KEY (\"contestnumber\")
     DBExec($c, "GRANT ALL ON \"polygoncontesttable\" TO \"" . $conf["dbuser"] . "\"", "DBCreatePolygonContestTable(grant bocauser)");
 }
 
+// ultimo import do Polygon de cada problema do BOCA: pacote (problema + revisao) e o hash do zip que ficou no
+// BOCA. Se o hash do problema mudar (upload pela aba Problems), o registro deixa de valer.
+function DBCreatePolygonImportTable()
+{
+    $c = DBConnect();
+    $conf = globalconf();
+    if ($conf["dbuser"] == "")
+        $conf["dbuser"] = "bocauser";
+    DBExec($c, "
+CREATE TABLE IF NOT EXISTS \"polygonimporttable\" (
+\"contestnumber\" int4 NOT NULL,		-- (id do concurso)
+\"problemnumber\" int4 NOT NULL,		-- (numero do problema no BOCA)
+\"polygonproblem\" int4 NOT NULL,		-- (id do problema no Polygon)
+\"polygonrevision\" int4 NOT NULL,		-- (revisao do pacote importado)
+\"probleminputfilehash\" varchar(50) NOT NULL,	-- (hash do zip gravado no BOCA por esse import)
+\"updatetime\" int4 DEFAULT EXTRACT(EPOCH FROM now()) NOT NULL, -- (indica a ultima atualizacao no registro)
+CONSTRAINT \"polygonimport_pkey\" PRIMARY KEY (\"contestnumber\", \"problemnumber\"),
+CONSTRAINT \"contest_fk\" FOREIGN KEY (\"contestnumber\")
+	REFERENCES \"contesttable\" (\"contestnumber\")
+	ON DELETE CASCADE ON UPDATE CASCADE NOT DEFERRABLE INITIALLY IMMEDIATE)", "DBCreatePolygonImportTable(create table)");
+    DBExec($c, "REVOKE ALL ON \"polygonimporttable\" FROM PUBLIC", "DBCreatePolygonImportTable(revoke public)");
+    DBExec($c, "GRANT ALL ON \"polygonimporttable\" TO \"" . $conf["dbuser"] . "\"", "DBCreatePolygonImportTable(grant bocauser)");
+}
+
+// grava o import (worker, depois do DBNewProblem): o hash vem do problema que acabou de ser gravado
+function polygon_import_save($contest, $number, $pid, $revision)
+{
+    polygon_db('insert into polygonimporttable (contestnumber, problemnumber, polygonproblem, polygonrevision, probleminputfilehash, updatetime) ' .
+        'select contestnumber, problemnumber, $3, $4, probleminputfilehash, $5 from problemtable ' .
+        'where contestnumber=$1 and problemnumber=$2 and probleminputfilehash is not null ' .
+        'on conflict (contestnumber, problemnumber) do update set polygonproblem=excluded.polygonproblem, ' .
+        'polygonrevision=excluded.polygonrevision, probleminputfilehash=excluded.probleminputfilehash, updatetime=excluded.updatetime',
+        array((int)$contest, (int)$number, (int)$pid, (int)$revision, time()));
+}
+
+// numero do problema => (pid, revision, name) dos problemas do contest que ainda tem o pacote do ultimo import
+// (mesmo hash, nao apagado); vazio se a tabela nao existir
+function polygon_imported($contest)
+{
+    $r = polygon_db('select i.problemnumber, i.polygonproblem, i.polygonrevision, p.problemname from polygonimporttable i ' .
+        'join problemtable p on p.contestnumber=i.contestnumber and p.problemnumber=i.problemnumber ' .
+        'and p.probleminputfilehash=i.probleminputfilehash ' .
+        "where i.contestnumber=\$1 and position('(DEL)' in p.problemfullname)=0", array((int)$contest));
+    $a = array();
+    if ($r !== false)
+        while (($row = pg_fetch_row($r)) !== false)
+            $a[(int)$row[0]] = array('pid' => (int)$row[1], 'revision' => (int)$row[2], 'name' => $row[3]);
+    return $a;
+}
+
 // '' se nao houver (ou se a tabela ainda nao existir: so perde o preenchimento automatico)
 function polygon_last_contest($contest)
 {
@@ -249,19 +299,25 @@ function polygon_jobs_list($contest = 0)
     return $a;
 }
 
-// enfileira; devolve '' ou o motivo da recusa (o mesmo numero ja esta sendo importado)
-function polygon_job_enqueue($job)
+// enfileira; devolve '' ou o motivo da recusa (o mesmo numero ja esta sendo importado). Com $done, nao
+// enfileira: registra o job ja como done com essa mensagem (problema ja em dia)
+function polygon_job_enqueue($job, $done = null)
 {
+    $st = ($done === null) ? 'queued' : 'done';
+    $now = time();
+    $fin = ($done === null) ? 0 : $now;
     $r = polygon_db("insert into polygonjobtable (contestnumber, problemnumber, problemname, polygonproblem, polygonpin, " .
         "usernumber, usersitenumber, username, jobstate, jobmsg, jobtries, queuedtime, startedtime, finishedtime, updatetime) " .
-        "values (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, 'queued', '', 0, \$9, 0, 0, \$9) " .
+        "values (\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$10, \$11, 0, \$9, \$12, \$12, \$9) " .
         "on conflict (contestnumber, problemnumber) do update set problemname=excluded.problemname, " .
         "polygonproblem=excluded.polygonproblem, polygonpin=excluded.polygonpin, usernumber=excluded.usernumber, " .
-        "usersitenumber=excluded.usersitenumber, username=excluded.username, jobstate='queued', jobmsg='', jobtries=0, " .
-        "queuedtime=excluded.queuedtime, startedtime=0, finishedtime=0, updatetime=excluded.updatetime " .
+        "usersitenumber=excluded.usersitenumber, username=excluded.username, jobstate=excluded.jobstate, jobmsg=excluded.jobmsg, jobtries=0, " .
+        "queuedtime=excluded.queuedtime, startedtime=excluded.startedtime, finishedtime=excluded.finishedtime, updatetime=excluded.updatetime " .
         "where polygonjobtable.jobstate <> 'running' returning problemnumber",
-        array((int) $job['contest'], (int) $job['number'], (string) $job['name'], (int) $job['pid'], (string) ($job['pin'] ?? ''),
-              (int) $job['usernumber'], (int) $job['usersitenumber'], (string) $job['username'], time()));
+        array((int) $job['contest'], (int) $job['number'], (string) $job['name'], (int) $job['pid'],
+              ($done === null) ? (string) ($job['pin'] ?? '') : '',
+              (int) $job['usernumber'], (int) $job['usersitenumber'], (string) $job['username'], $now,
+              $st, ($done === null) ? '' : (string) $done, $fin));
     if ($r === false)
         return 'could not write the import queue (see the BOCA log)';
     return (pg_num_rows($r) == 1) ? '' : 'problem ' . (int) $job['number'] . ' is being imported right now';

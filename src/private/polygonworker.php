@@ -73,6 +73,8 @@ function polygonRunJob($job) {
 	ob_start();
 	DBGetFullProblemData($contest, true);
 	ob_end_clean();
+	// para a tela de import saber que o problema ja esta em dia com essa revisao
+	polygon_import_save($contest, $num, $job['pid'], $pk['revision']);
 	$GLOBALS['polygonimported'] = 'imported package revision ' . (int)$pk['revision'];
 	return '';
 }

@@ -14,10 +14,11 @@ if (function_exists('posix_geteuid') && posix_geteuid() != 0) {
 chdir(__DIR__ . '/..');
 require_once('db.php');
 
-echo "tabelas novas (se faltarem): contestpdftable, polygonjobtable, polygoncontesttable\n";
+echo "tabelas novas (se faltarem): contestpdftable, polygonjobtable, polygoncontesttable, polygonimporttable\n";
 DBCreateContestPdfTable();
 DBCreatePolygonJobTable();
 DBCreatePolygonContestTable();
+DBCreatePolygonImportTable();
 
 // PDFs da prova: antes ficavam em private/secretcontest/<contest>/contest.pdf e contest-en.pdf
 $dir = __DIR__ . '/secretcontest';

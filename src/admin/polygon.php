@@ -70,18 +70,27 @@ if (isset($_POST['Submit2']) && $_POST['Submit2'] == 'Import') {
 			MSGError('Two selected problems have the same number ' . (int)$num);
 			ForceLoad("polygon.php");
 		}
-		$todo[(int)$num] = array('pid' => $pid, 'name' => $sn);
+		$rev = polygonPost('rev', $i);
+		$todo[(int)$num] = array('pid' => $pid, 'name' => $sn, 'rev' => ctype_digit($rev) ? (int)$rev : 0);
 	}
 	ksort($todo);
-	// a importacao roda em background (private/polygonworker.php): pacotes de centenas de MB, varios minutos
+	// a importacao roda em background (private/polygonworker.php): pacotes de centenas de MB, varios minutos.
+	// BRUTE: problema que ja tem o pacote dessa revisao (mesmo problema do Polygon, mesmo nome, e ninguem trocou o
+	// zip pela aba Problems) nao entra na fila: fica registrado como done
+	$imported = polygon_imported($contest);
 	$refused = array();
+	$queued = 0;
 	foreach ($todo as $num => $t) {
+		$u = $imported[$num] ?? null;
+		$same = ($u !== null && $t['rev'] > 0 && $u['pid'] == (int)$t['pid'] && $u['revision'] == $t['rev'] && $u['name'] === $t['name']);
 		$r = polygon_job_enqueue(array('contest' => $contest, 'number' => $num, 'name' => $t['name'], 'pid' => $t['pid'],
 			'pin' => $pin, 'usernumber' => $_SESSION["usertable"]["usernumber"],
-			'usersitenumber' => $_SESSION["usertable"]["usersitenumber"], 'username' => $_SESSION["usertable"]["username"]));
+			'usersitenumber' => $_SESSION["usertable"]["usersitenumber"], 'username' => $_SESSION["usertable"]["username"]),
+			$same ? 'already up to date (package revision ' . $t['rev'] . '), not imported again' : null);
 		if ($r !== '') $refused[] = $t['name'] . ' (' . $r . ')';
+		else if (!$same) $queued++;
 	}
-	polygon_start_worker();
+	if ($queued > 0) polygon_start_worker();
 	if (count($refused)) MSGError(polygonMsg('Not queued: ' . implode('; ', $refused)));
 	ForceLoad("polygon.php");
 }
@@ -135,6 +144,7 @@ if (isset($_POST['Submit1']) && $_POST['Submit1'] == 'List') {
 $existing = array();
 foreach (DBGetProblems($contest, true) as $bp)
 	$existing[$bp['number']] = $bp['problem'];
+$imported = ($list !== null) ? polygon_imported($contest) : array();
 ?>
 <?php
 $jobs = polygon_jobs_list($contest);
@@ -211,7 +221,8 @@ if ($list !== null) {
 			$sn = ($l['letter'] !== '') ? $l['letter'] : chr(64 + min($l['number'], 26));
 			echo "    <tr>\n";
 			echo "      <td><input type=\"checkbox\" name=\"row[$i]\" value=\"1\"" . ($pkrev > 0 ? ' checked' : ' disabled') . " />";
-			echo "<input type=\"hidden\" name=\"pid[$i]\" value=\"" . (int)$pr['id'] . "\" /></td>\n";
+			echo "<input type=\"hidden\" name=\"pid[$i]\" value=\"" . (int)$pr['id'] . "\" />";
+			echo "<input type=\"hidden\" name=\"rev[$i]\" value=\"" . $pkrev . "\" /></td>\n";
 			echo "      <td><input type=\"text\" name=\"number[$i]\" value=\"" . (int)$l['number'] . "\" size=\"4\" maxlength=\"4\" /></td>\n";
 			echo "      <td><input type=\"text\" name=\"shortname[$i]\" value=\"" . htmlspecialchars($sn) . "\" size=\"2\" maxlength=\"1\" /></td>\n";
 			echo "      <td>" . htmlspecialchars(($l['letter'] !== '' ? $l['letter'] . ': ' : '') . ($pr['name'] ?? '')) .
@@ -226,7 +237,12 @@ if ($list !== null) {
 				echo "</td>\n";
 			}
 			$n = (int)$l['number'];
-			echo "      <td>" . (isset($existing[$n]) ? 'number ' . $n . ' is ' . htmlspecialchars($existing[$n]) . ' (will be replaced)' : '&nbsp;') . "</td>\n";
+			$u = $imported[$n] ?? null;
+			if ($u !== null && $pkrev > 0 && $u['pid'] == (int)$pr['id'] && $u['revision'] == $pkrev && $u['name'] === $sn)
+				echo "      <td><font color=\"#008000\">number " . $n . " is " . htmlspecialchars($existing[$n] ?? $sn) .
+					", already up to date (revision " . $pkrev . "): will be skipped</font></td>\n";
+			else
+				echo "      <td>" . (isset($existing[$n]) ? 'number ' . $n . ' is ' . htmlspecialchars($existing[$n]) . ' (will be replaced)' : '&nbsp;') . "</td>\n";
 			echo "    </tr>\n";
 		}
 ?>

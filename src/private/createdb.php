@@ -76,6 +76,7 @@ DBCreateBkpTable();
 DBCreateContestPdfTable();
 DBCreatePolygonJobTable();
 DBCreatePolygonContestTable();
+DBCreatePolygonImportTable();
 echo "creating initial fake contest\n";
 DBFakeContest();
 ?>
