@@ -158,7 +158,8 @@ if (count($jobs) > 0) {
 }
 ?>
 <br><center><b>Import problems from Polygon</b></center>
-<p align=center>Problems must be shared (at least READ access) with the BOCA Polygon account, and must have a full package built in Polygon.<br>
+<?php // BRUTE: nome da conta do Polygon dona da chave da API (BOCA_POLYGON_USER no .env; padrao: a conta da BRUTE) ?>
+<p align=center>Problems must be shared (at least READ access) with the Polygon account <b><?php echo htmlspecialchars($_ENV['BOCA_POLYGON_USER'] ?? 'bruteudesc'); ?></b>, and must have a full package built in Polygon.<br>
 Each imported package goes through the same conversion as the manual upload in the Problems tab, in background.<br>
 A problem with the same number is replaced. It is NOT recommended to change anything while the contest is running.</p>
 
