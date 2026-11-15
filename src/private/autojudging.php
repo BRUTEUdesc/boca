@@ -532,7 +532,7 @@ while(42) {
       continue;
     } else {
       $errp=0; $ncor=0; $showcor=false;
-      sort($inputlist);
+      sort($inputlist, SORT_NATURAL); // BRUTE: 2 antes de 10 e 99 antes de 100 (o AJ para no primeiro teste que falha)
       foreach($inputlist as $file) {
 	$file = basename($file);
 	if(is_file($dir . $ds . "input" . $ds . $file)) {
