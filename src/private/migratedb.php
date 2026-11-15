@@ -19,6 +19,9 @@ DBCreateContestPdfTable();
 DBCreatePolygonJobTable();
 DBCreatePolygonContestTable();
 DBCreatePolygonImportTable();
+echo "coluna nova (se faltar): runtable.autoheartbeat\n";
+if (!DBAddRunHeartbeatColumn())
+	echo "  ERRO ao criar runtable.autoheartbeat (lock ocupado? rode de novo; veja o log do BOCA)\n";
 
 // PDFs da prova: antes ficavam em private/secretcontest/<contest>/contest.pdf e contest-en.pdf
 $dir = __DIR__ . '/secretcontest';
