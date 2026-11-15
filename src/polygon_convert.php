@@ -290,6 +290,7 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 
 	// testes: <testset>/X e <testset>/X.a viram input/X.<k> e output/X.<k> (k = posicao do testset)
 	$k = 0;
+	$ntot = 0;
 	foreach ($judging->testset as $t) {
 		$k++;
 		if (!isset($t['name'])) {
@@ -297,6 +298,17 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 		}
 		$pre = polygon_normname((string) $t['name']);
 		$pre = ($pre === '') ? '' : "$pre/";
+		// BRUTE: entrada sem .a seria descartada em silencio (a solucao errada so nesse teste ganharia AC)
+		foreach ($ents as $name => $i) {
+			$f = substr($name, strlen($pre));
+			if ($pre === '' || strncmp($name, $pre, strlen($pre)) != 0 || $f === '' || strpos($f, '/') !== false || substr($f, -2) === '.a') {
+				continue;
+			}
+			if (!isset($ents[$name . '.a'])) {
+				return polygon_convert_fail($tmp, "teste $pre$f sem resposta ($f.a) no pacote: gere o pacote completo de novo no Polygon");
+			}
+		}
+		$nt = 0;
 		foreach ($ents as $name => $i) {
 			$f = substr($name, strlen($pre));
 			if (strncmp($name, $pre, strlen($pre)) != 0 || strpos($f, '/') !== false || substr($f, -2) !== '.a') {
@@ -309,7 +321,16 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 			if (!polygon_extract($zip, $i, "$pd/output/$in.$k") || !polygon_extract($zip, $ents[$pre . $in], "$pd/input/$in.$k")) {
 				return polygon_convert_fail($tmp, "erro extraindo o teste $pre$in");
 			}
+			$nt++;
 		}
+		if (isset($t->{'test-count'}) && (int) $t->{'test-count'} != $nt) {
+			return polygon_convert_fail($tmp, "testset $pre: o problem.xml diz " . (int) $t->{'test-count'} . " testes e o pacote tem $nt");
+		}
+		$ntot += $nt;
+	}
+	// sem nenhum teste o AJ desiste de toda run do problema ("problem package has no input files")
+	if ($ntot == 0) {
+		return polygon_convert_fail($tmp, "o pacote nao tem nenhum teste (gere o pacote completo no Polygon)");
 	}
 
 	$tls = array('c' => $clang, 'cpp' => $clang, 'java' => $clang * $javafactor, 'kt' => $clang * $javafactor, 'py3' => $clang * $pythonfactor);
