@@ -75,6 +75,7 @@ DBCreateBkpTable();
 // BRUTE: PDF da prova e fila de importacao do Polygon (banco existente: private/migratedb.php)
 DBCreateContestPdfTable();
 DBCreatePolygonJobTable();
+DBCreatePolygonContestTable();
 echo "creating initial fake contest\n";
 DBFakeContest();
 ?>

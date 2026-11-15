@@ -181,6 +181,41 @@ CONSTRAINT \"contest_fk\" FOREIGN KEY (\"contestnumber\")
     DBExec($c, "GRANT ALL ON \"polygonjobtable\" TO \"" . $conf["dbuser"] . "\"", "DBCreatePolygonJobTable(grant bocauser)");
 }
 
+// ultimo contest do Polygon listado em cada contest do BOCA (a tela de import ja abre com ele preenchido)
+function DBCreatePolygonContestTable()
+{
+    $c = DBConnect();
+    $conf = globalconf();
+    if ($conf["dbuser"] == "")
+        $conf["dbuser"] = "bocauser";
+    DBExec($c, "
+CREATE TABLE IF NOT EXISTS \"polygoncontesttable\" (
+\"contestnumber\" int4 NOT NULL,		-- (id do concurso)
+\"polygoncontest\" int4 NOT NULL,		-- (id do contest no Polygon)
+\"updatetime\" int4 DEFAULT EXTRACT(EPOCH FROM now()) NOT NULL, -- (indica a ultima atualizacao no registro)
+CONSTRAINT \"polygoncontest_pkey\" PRIMARY KEY (\"contestnumber\"),
+CONSTRAINT \"contest_fk\" FOREIGN KEY (\"contestnumber\")
+	REFERENCES \"contesttable\" (\"contestnumber\")
+	ON DELETE CASCADE ON UPDATE CASCADE NOT DEFERRABLE INITIALLY IMMEDIATE)", "DBCreatePolygonContestTable(create table)");
+    DBExec($c, "REVOKE ALL ON \"polygoncontesttable\" FROM PUBLIC", "DBCreatePolygonContestTable(revoke public)");
+    DBExec($c, "GRANT ALL ON \"polygoncontesttable\" TO \"" . $conf["dbuser"] . "\"", "DBCreatePolygonContestTable(grant bocauser)");
+}
+
+// '' se nao houver (ou se a tabela ainda nao existir: so perde o preenchimento automatico)
+function polygon_last_contest($contest)
+{
+    $r = polygon_db('select polygoncontest from polygoncontesttable where contestnumber=$1', array((int)$contest));
+    $row = $r ? pg_fetch_row($r) : false;
+    return $row ? (string)$row[0] : '';
+}
+
+function polygon_save_contest($contest, $pgid)
+{
+    polygon_db('insert into polygoncontesttable (contestnumber, polygoncontest, updatetime) values ($1, $2, $3) ' .
+        'on conflict (contestnumber) do update set polygoncontest=excluded.polygoncontest, updatetime=excluded.updatetime',
+        array((int)$contest, (int)$pgid, time()));
+}
+
 // consulta parametrizada na conexao do BOCA; false (e log) em erro, sem abortar a pagina/o worker
 function polygon_db($sql, $params = array(), $c = null)
 {

@@ -96,6 +96,9 @@ if (isset($_POST['Submit3']) && $_POST['Submit3'] == 'Clear finished') {
 $list = null;
 $mode = (isset($_POST['mode']) && $_POST['mode'] == 'problem') ? 'problem' : 'contest';
 $pgid = polygonPost('pgid');
+// BRUTE: sem nada digitado, a tela abre com o ultimo contest do Polygon listado neste contest
+if ($pgid === '' && !isset($_POST['mode']))
+	$pgid = polygon_last_contest($contest);
 if (isset($_POST['Submit1']) && $_POST['Submit1'] == 'List') {
 	if (!ctype_digit($pgid)) {
 		MSGError('Polygon ' . $mode . ' ID must be a number');
@@ -114,7 +117,10 @@ if (isset($_POST['Submit1']) && $_POST['Submit1'] == 'List') {
 		MSGError(polygonMsg($err));
 		ForceLoad("polygon.php");
 	}
-	if ($mode == 'contest') uksort($r, 'strnatcmp');
+	if ($mode == 'contest') {
+		uksort($r, 'strnatcmp');
+		polygon_save_contest($contest, $pgid);
+	}
 	$list = array();
 	$i = 0;
 	foreach ($r as $letter => $pr) {
