@@ -291,6 +291,7 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	// testes: <testset>/X e <testset>/X.a viram input/X.<k> e output/X.<k> (k = posicao do testset)
 	$k = 0;
 	$ntot = 0;
+	$maxans = 0; // maior .a (bytes), para o limite de saida
 	foreach ($judging->testset as $t) {
 		$k++;
 		if (!isset($t['name'])) {
@@ -321,6 +322,7 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 			if (!polygon_extract($zip, $i, "$pd/output/$in.$k") || !polygon_extract($zip, $ents[$pre . $in], "$pd/input/$in.$k")) {
 				return polygon_convert_fail($tmp, "erro extraindo o teste $pre$in");
 			}
+			$maxans = max($maxans, (int) @filesize("$pd/output/$in.$k"));
 			$nt++;
 		}
 		if (isset($t->{'test-count'}) && (int) $t->{'test-count'} != $nt) {
@@ -333,9 +335,12 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 		return polygon_convert_fail($tmp, "o pacote nao tem nenhum teste (gere o pacote completo no Polygon)");
 	}
 
+	// limite de arquivo do safeexec (KB) = limite da saida do time: 15 MB, ou o dobro da maior resposta do juiz + 1 MB
+	// (com 15 MB fixo, problema com resposta maior dava RE para toda solucao correta)
+	$maxf = max(15360, (int) ceil(2 * $maxans / 1024) + 1024);
 	$tls = array('c' => $clang, 'cpp' => $clang, 'java' => $clang * $javafactor, 'kt' => $clang * $javafactor, 'py3' => $clang * $pythonfactor);
 	foreach ($tls as $ext => $tl) {
-		$ok = $ok && @file_put_contents("$pd/limits/$ext", "echo $tl\necho $rep\necho $ml\necho 15360\nexit 0\n") !== false;
+		$ok = $ok && @file_put_contents("$pd/limits/$ext", "echo $tl\necho $rep\necho $ml\necho $maxf\nexit 0\n") !== false;
 	}
 	$info = "basename=\"$idx\"\nfullname=\"$pname\"\ndescfile=\"$idx.pdf\"\n";
 	$ok = $ok && @file_put_contents("$pd/description/problem.info", $info) !== false
