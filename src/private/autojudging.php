@@ -134,6 +134,8 @@ while(42) {
   }
 
   echo "Entering directory $tmpdir (contest=$contest, site=$site, run=$number)\n";
+  // "Contact staff" decidido pelo compare (checker/interactor com FAIL ou crash): nao vira runtime error no fim
+  $cmpstaff = false;
   chdir($tmpdir);
   for($i=0; $i<5; $i++) {
     $name = tempnam($tmpdir, "boca");
@@ -601,6 +603,7 @@ while(42) {
 	    if($localretval < 4 || $localretval > 6) {
 	      // contact staff
 	      $retval = 7;
+	      $cmpstaff = true;
 	      $answer='(Contact staff)' . $answertmp;
 	      if($showcor) $answertmp .= ' (' . $ncor . '/' . $ninputlist . ' OKs)';
 	      break;
@@ -719,7 +722,7 @@ while(42) {
   if($ajtimeout !== false) {
     LogLevel("Autojudging: $ajtimeout script timed out (run=$number, site=$site, contest=$contest)",1);
     echo "Autojudging: $ajtimeout script timed out -- answering contact staff (contest=$contest, site=$site, run=$number)\n";
-  } else if($retval >= 7 && $retval <= 9) {
+  } else if($retval >= 7 && $retval <= 9 && !$cmpstaff) {
     $ans = file("allout");
     $anstmp = '';
     if(count($ans) > 0)
