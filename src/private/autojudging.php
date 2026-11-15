@@ -96,24 +96,37 @@ function ajtimedout($rc) {
 }
 
 // BRUTE: sinal de vida enquanto julga uma run (ver DBGetRunToAutojudging em frun.php): private/ajheartbeat.php,
-// processo proprio que so atualiza runtable.autoheartbeat a cada 30 s. Processo novo (proc_open), nao fork: um
-// filho do PHP herdaria a conexao TLS do pai com o banco e a corromperia. Ele para quando o pai o encerra (no
-// comeco da proxima volta), quando o pai morre, quando a run deixa de ser deste autojudge ou depois de 1 h.
-// Sem a coluna no banco (ou se nao der para lancar): nao ha sinal e vale a regra antiga (15 min).
+// processo proprio que atualiza runtable.autoheartbeat a cada 30 s. Processo novo (proc_open), nao fork: um
+// filho do PHP herdaria a conexao TLS do pai com o banco e a corromperia. O pai marca progresso (ajbeat_progress,
+// mtime de um arquivo) antes de cada etapa; o heartbeat so renova se houve progresso nos ultimos 15 min (a etapa
+// mais longa, o compare, e cortada em 600 s): pai travado fora de uma etapa deixa de ter sinal. Ele para quando o
+// pai o encerra (no comeco da proxima volta), quando o pai morre ou quando a run deixa de ser deste autojudge.
+// Sem a coluna no banco ou se nao subir: nao ha sinal e vale a regra antiga (15 min).
 function ajbeat_start($contest, $site, $number, $ip) {
   if (!function_exists('proc_open') || !DBRunHasHeartbeat(DBConnect()))
     return null;
-  $h = @proc_open(array(PHP_BINARY, __DIR__ . '/ajheartbeat.php', (string)(int)$contest, (string)(int)$site,
-      (string)(int)$number, (string)$ip, (string)getmypid()),
+  $f = @tempnam(sys_get_temp_dir(), 'ajbeat');
+  $h = ($f === false) ? false : @proc_open(array(PHP_BINARY, __DIR__ . '/ajheartbeat.php', (string)(int)$contest,
+      (string)(int)$site, (string)(int)$number, (string)$ip, (string)getmypid(), $f),
     array(0 => array('file', '/dev/null', 'r'), 1 => array('file', '/dev/null', 'w'), 2 => STDERR), $pipes);
-  return is_resource($h) ? $h : null;
-}
-function ajbeat_stop(&$h) {
-  if (is_resource($h)) {
-    @proc_terminate($h, 9);
-    @proc_close($h);
+  if (!is_resource($h)) {
+    if ($f !== false) @unlink($f);
+    echo "WARN: heartbeat process not started (run=$number): run is reclaimable only after 15 min\n";
+    return null;
   }
-  $h = null;
+  return array($h, $f);
+}
+function ajbeat_progress() {
+  global $ajbeat;
+  if (is_array($ajbeat)) @touch($ajbeat[1]);
+}
+function ajbeat_stop(&$b) {
+  if (is_array($b)) {
+    @proc_terminate($b[0], 9);
+    @proc_close($b[0]);
+    @unlink($b[1]);
+  }
+  $b = null;
 }
 
 $cf = globalconf();
@@ -407,6 +420,7 @@ while(42) {
   $ajtl = max(1, (int) trim($limits[$lkey][$run["extension"]][0]));
   $ajnruns = max(1, (int) trim($limits[$lkey][$run["extension"]][1]));
   $ajtimeout = false;
+  ajbeat_progress();
   $ex = ajtimeout($ajtl + 330) . escapeshellcmd($script) ." ".
     escapeshellarg($run["sourcename"])." ".
     escapeshellarg($basename) . " ".
@@ -526,6 +540,7 @@ while(42) {
 	    }
 	  }
 
+	  ajbeat_progress();
 	  $ex = ajtimeout(($ajtl + 30) * $ajnruns + 120) . escapeshellcmd($script) ." ".
 	    escapeshellarg($basename) . " ".
 	    escapeshellarg($dir . $ds . "input" . $ds . $file)." ".
@@ -591,6 +606,7 @@ while(42) {
 	    // criado antes com 0600: o ">compout" do shell mantem o modo (saida do checker, so para o root)
 	    @touch($dir . $ds . 'compout');
 	    @chmod($dir . $ds . 'compout', 0600);
+	    ajbeat_progress();
 	    $ex = ajtimeout(600) . escapeshellcmd($scriptcomp) ." ".
 	      escapeshellarg($dir . $ds . "team" . $ds . $file)." ".
 	      escapeshellarg($dir . $ds . "output" . $ds . $file)." ".

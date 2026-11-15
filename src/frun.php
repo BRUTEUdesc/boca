@@ -412,10 +412,11 @@ function DBGetRunToAnswerC($number,$site,$contest,$chief) {
 			 "(site=".$_SESSION["usertable"]["usersitenumber"] .")).", 3);
 	return $a;
 }
-// BRUTE: sinal de vida do autojudge (runtable.autoheartbeat, epoch pelo relogio do banco). Enquanto julga, um processo
-// filho do autojudging.php atualiza a coluna a cada 30 s; a run so volta para a fila quando o sinal para por 2 min
-// (autojudge, maquina ou rede caiu), por mais que a correcao demore: demora e cortada pelos timeouts de cada etapa.
-// Run sem sinal (pega por autojudge com codigo antigo) segue a regra antiga: 15 min desde o inicio.
+// BRUTE: sinal de vida do autojudge (runtable.autoheartbeat, epoch pelo relogio do banco). Enquanto julga, o
+// private/ajheartbeat.php atualiza a coluna a cada 30 s (enquanto a correcao avanca); a run so volta para a fila
+// quando o sinal para por 2 min (autojudge, maquina ou rede caiu), por mais que a correcao demore. Run sem sinal
+// (heartbeat que nao subiu, autojudge com codigo antigo) ou com sinal anterior ao inicio desta correcao (de uma
+// correcao antiga) segue a regra antiga: 15 min desde o inicio.
 // A coluna vem do createdb.php (banco novo) ou do migratedb.php; sem ela, tudo funciona como antes.
 function DBRunHasHeartbeat($c) {
 	static $has = null, $checked = 0;
@@ -428,16 +429,20 @@ function DBRunHasHeartbeat($c) {
 }
 function DBAddRunHeartbeatColumn() {
 	$c = DBConnect();
-	// ALTER pede lock exclusivo (instantaneo, coluna sem valor): nao fica na fila atras de uma transacao longa
-	DBExecNonStop($c, "set lock_timeout = '10s'", "DBAddRunHeartbeatColumn(lock_timeout)");
-	return DBExecNonStop($c, "alter table runtable add column if not exists autoheartbeat int4 default null",
+	if (DBRunHasHeartbeat($c)) return true; // ALTER, mesmo com IF NOT EXISTS, pegaria lock exclusivo a cada deploy
+	// lock exclusivo (instantaneo, coluna sem valor): nao fica na fila atras de uma transacao longa
+	DBExecNonStop($c, "set lock_timeout = '2s'", "DBAddRunHeartbeatColumn(lock_timeout)");
+	$ok = DBExecNonStop($c, "alter table runtable add column if not exists autoheartbeat int4 default null",
 		"DBAddRunHeartbeatColumn(alter table)") !== false;
+	DBExecNonStop($c, "reset lock_timeout", "DBAddRunHeartbeatColumn(reset lock_timeout)");
+	return $ok;
 }
 function DBGetRunToAutojudging($contest, $ip) {
 	$c = DBConnect();
 	$hb = DBRunHasHeartbeat($c);
-	// autojudge morto: sem sinal de vida ha 2 min ou, run sem sinal, sem autoenddate ha mais de 15 min
-	$dead = $hb ? "(case when r.autoheartbeat is null then r.autobegindate < " . (time() - 900) .
+	// autojudge morto: sem sinal de vida ha 2 min ou, run sem sinal desta correcao, sem autoenddate ha mais de 15 min
+	// (folga de 300 s no "anterior ao inicio": autobegindate vem do relogio do autojudge, o sinal do banco)
+	$dead = $hb ? "(case when r.autoheartbeat is null or r.autoheartbeat < r.autobegindate - 300 then r.autobegindate < " . (time() - 900) .
 		" else r.autoheartbeat < extract(epoch from now())::int - 120 end)" : "r.autobegindate < " . (time() - 900);
 	DBExec($c, "begin work", "DBGetRunToAnswerC(transaction)");
 	$sql = "select r.contestnumber as contest, r.runsitenumber as site, r.runanswer as answer, " .
@@ -467,7 +472,8 @@ function DBGetRunToAutojudging($contest, $ip) {
 
 	DBExec($c, "update runtable set autoip='" . $ip . "', " . 
 		   "autobegindate=$t, autoenddate=null, autoanswer=null, autostdout=null, autostderr=null, " .
-		   ($hb ? "autoheartbeat=extract(epoch from now())::int, " : "") .
+		   // o primeiro sinal vem do ajheartbeat.php: se ele nao subir, vale a regra dos 15 min, nao a dos 2
+		   ($hb ? "autoheartbeat=null, " : "") .
 		   "updatetime=$t " .
 		   "where contestnumber={$a["contest"]} and runnumber={$a["number"]} and runsitenumber={$a["site"]}",
 		   "DBGetRunToAutojudging(update run)");
