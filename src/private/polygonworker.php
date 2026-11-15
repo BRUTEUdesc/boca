@@ -68,6 +68,7 @@ function polygonRunJob($job) {
 	ob_start(); // DBNewProblem escreve alert() em erro; aqui so interessa o retorno
 	$ret = DBNewProblem($contest, $param);
 	$out = ob_get_clean();
+	$convhash = sha1_file($conv[0]); // = probleminputfilehash (DBcrc: sha1 do zip) se o DBNewProblem gravou este pacote
 	@unlink($conv[0]); // ja esta no banco (large object); o worker processa varios jobs antes de sair
 	if ($ret === false || strpos($out, 'alert(') !== false)
 		return 'error saving the problem: ' . trim(strip_tags(preg_replace("/.*alert\\('([^']*)'.*/s", '$1', $out)));
@@ -79,7 +80,7 @@ function polygonRunJob($job) {
 	DBGetFullProblemData($contest, true);
 	ob_end_clean();
 	// para a tela de import saber que o problema ja esta em dia com essa revisao
-	polygon_import_save($contest, $num, $job['pid'], $pk['revision']);
+	polygon_import_save($contest, $num, $job['pid'], $pk['revision'], $convhash);
 	$GLOBALS['polygonimported'] = 'imported package revision ' . (int)$pk['revision'];
 	return '';
 }

@@ -225,15 +225,16 @@ CONSTRAINT \"contest_fk\" FOREIGN KEY (\"contestnumber\")
     DBExec($c, "GRANT ALL ON \"polygonimporttable\" TO \"" . $conf["dbuser"] . "\"", "DBCreatePolygonImportTable(grant bocauser)");
 }
 
-// grava o import (worker, depois do DBNewProblem): o hash vem do problema que acabou de ser gravado
-function polygon_import_save($contest, $number, $pid, $revision)
+// grava o import (worker, depois do DBNewProblem). So se o zip que ficou no problema e o deste import (mesmo
+// sha1): se alguem subiu outro zip no meio, ou o DBNewProblem nao gravou, nao marca "em dia"
+function polygon_import_save($contest, $number, $pid, $revision, $hash)
 {
     polygon_db('insert into polygonimporttable (contestnumber, problemnumber, polygonproblem, polygonrevision, probleminputfilehash, updatetime) ' .
         'select contestnumber, problemnumber, $3, $4, probleminputfilehash, $5 from problemtable ' .
-        'where contestnumber=$1 and problemnumber=$2 and probleminputfilehash is not null ' .
+        'where contestnumber=$1 and problemnumber=$2 and probleminputfilehash=$6 ' .
         'on conflict (contestnumber, problemnumber) do update set polygonproblem=excluded.polygonproblem, ' .
         'polygonrevision=excluded.polygonrevision, probleminputfilehash=excluded.probleminputfilehash, updatetime=excluded.updatetime',
-        array((int)$contest, (int)$number, (int)$pid, (int)$revision, time()));
+        array((int)$contest, (int)$number, (int)$pid, (int)$revision, time(), (string)$hash));
 }
 
 // numero do problema => (pid, revision, name) dos problemas do contest que ainda tem o pacote do ultimo import
@@ -242,7 +243,7 @@ function polygon_imported($contest)
 {
     $r = polygon_db('select i.problemnumber, i.polygonproblem, i.polygonrevision, p.problemname from polygonimporttable i ' .
         'join problemtable p on p.contestnumber=i.contestnumber and p.problemnumber=i.problemnumber ' .
-        'and p.probleminputfilehash=i.probleminputfilehash ' .
+        'and p.probleminputfilehash=i.probleminputfilehash and p.problembasefilename=p.problemname ' .
         "where i.contestnumber=\$1 and position('(DEL)' in p.problemfullname)=0", array((int)$contest));
     $a = array();
     if ($r !== false)
@@ -313,7 +314,8 @@ function polygon_job_enqueue($job, $done = null)
         "polygonproblem=excluded.polygonproblem, polygonpin=excluded.polygonpin, usernumber=excluded.usernumber, " .
         "usersitenumber=excluded.usersitenumber, username=excluded.username, jobstate=excluded.jobstate, jobmsg=excluded.jobmsg, jobtries=0, " .
         "queuedtime=excluded.queuedtime, startedtime=excluded.startedtime, finishedtime=excluded.finishedtime, updatetime=excluded.updatetime " .
-        "where polygonjobtable.jobstate <> 'running' returning problemnumber",
+        "where polygonjobtable.jobstate <> 'running' and (excluded.jobstate = 'queued' or polygonjobtable.jobstate <> 'queued') " .
+        "returning problemnumber",
         array((int) $job['contest'], (int) $job['number'], (string) $job['name'], (int) $job['pid'],
               ($done === null) ? (string) ($job['pin'] ?? '') : '',
               (int) $job['usernumber'], (int) $job['usersitenumber'], (string) $job['username'], $now,

@@ -77,7 +77,8 @@ if (isset($_POST['Submit2']) && $_POST['Submit2'] == 'Import') {
 	// a importacao roda em background (private/polygonworker.php): pacotes de centenas de MB, varios minutos.
 	// BRUTE: problema que ja tem o pacote dessa revisao (mesmo problema do Polygon, mesmo nome, e ninguem trocou o
 	// zip pela aba Problems) nao entra na fila: fica registrado como done
-	$imported = polygon_imported($contest);
+	// "force": reimporta mesmo em dia (correcao no conversor ou nos templates que precisa chegar ao problema)
+	$imported = isset($_POST['force']) ? array() : polygon_imported($contest);
 	$refused = array();
 	$queued = 0;
 	foreach ($todo as $num => $t) {
@@ -175,7 +176,7 @@ if (count($jobs) > 0) {
 ?>
 <br><center><b>Import problems from Polygon</b></center>
 <?php // BRUTE: nome da conta do Polygon dona da chave da API (BOCA_POLYGON_USER no .env; padrao: a conta da BRUTE) ?>
-<p align=center>Problems must be shared (at least READ access) with the Polygon account <b><?php echo htmlspecialchars($_ENV['BOCA_POLYGON_USER'] ?? 'bruteudesc'); ?></b>, and must have a full package built in Polygon.<br>
+<p align=center>Problems must be shared (at least READ access) with the Polygon account <b><?php echo htmlspecialchars(($_ENV['BOCA_POLYGON_USER'] ?? '') ?: 'bruteudesc'); ?></b>, and must have a full package built in Polygon.<br>
 Each imported package goes through the same conversion as the manual upload in the Problems tab, in background.<br>
 A problem with the same number is replaced. It is NOT recommended to change anything while the contest is running.</p>
 
@@ -248,6 +249,7 @@ if ($list !== null) {
 ?>
   </table>
   <br><center>
+    <label><input type="checkbox" name="force" value="1" /> Import again even the problems already up to date</label><br><br>
     <input type="submit" name="Submit2" value="Import" onClick="return confirm('Import the selected problems? Problems with the same number will be replaced.');">
   </center>
 </form>
