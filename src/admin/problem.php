@@ -20,6 +20,7 @@ if (!isset($_POST["confirmation"]) || $_POST["confirmation"] != "confirm")
 	unset($_POST['noflush']);
 
 require('header.php');
+require_once('csrf.php');
 if(($ct = DBContestInfo($_SESSION["usertable"]["contestnumber"])) == null)
 	ForceLoad("../index.php");
 
@@ -39,6 +40,12 @@ if (DBContestPdfExists($contest, 'en')) {
 }
 
 if (isset($_GET["delete"]) && is_numeric($_GET["delete"]) && isset($_GET["input"])) {
+	// BRUTE: o link de delete/undelete leva o token da sessao; sem ele, um link aberto pelo admin logado
+	// apagaria o problema e todas as runs dele (CSRF)
+	if (!isset($_GET['csrftoken']) || !is_string($_GET['csrftoken']) || !hash_equals(csrfToken(), $_GET['csrftoken'])) {
+		MSGError('Invalid or expired link. Reload the page and try again.');
+		ForceLoad("problem.php");
+	}
 	$param = array();
 	$param['number']=$_GET["delete"];
 	$param['inputfilename']=myrawurldecode($_GET["input"]);
@@ -392,11 +399,11 @@ for ($i=0; $i<count($prob); $i++) {
   echo " <tr>\n";
   if($prob[$i]["fake"]!='t') {
 	  if(strpos($prob[$i]["fullname"],"(DEL)") !== false) {
-		  echo "  <td nowrap><a href=\"javascript: conf3('problem.php?delete=" . $prob[$i]["number"] . "&input=" . myrawurlencode($prob[$i]["inputfilename"]) . 
+		  echo "  <td nowrap><a href=\"javascript: conf3('problem.php?delete=" . $prob[$i]["number"] . "&input=" . myrawurlencode($prob[$i]["inputfilename"]) . "&csrftoken=" . csrfToken() .
 			  "')\">" . $prob[$i]["number"];
 		  echo "(deleted)";
 	  } else {
-		  echo "  <td nowrap><a href=\"javascript: conf2('problem.php?delete=" . $prob[$i]["number"] . "&input=" . myrawurlencode($prob[$i]["inputfilename"]) . 
+		  echo "  <td nowrap><a href=\"javascript: conf2('problem.php?delete=" . $prob[$i]["number"] . "&input=" . myrawurlencode($prob[$i]["inputfilename"]) . "&csrftoken=" . csrfToken() .
 			  "')\">" . $prob[$i]["number"];
 	  }
 	  echo "</a></td>\n";

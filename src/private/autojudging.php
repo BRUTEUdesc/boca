@@ -178,6 +178,9 @@ while(42) {
   }
   cleardir($dir . $ds . "problemdatalocal");
   cleardir($dir . $ds . "problemdata");
+  // BRUTE: limites indexados pelo pacote (oid.nome), nao pelo basename: na producao o basename e a letra
+  // (A, B...), igual entre contests, e o AJ roda sem reiniciar; o cache hit abaixo nao recarrega os limites
+  $lkey = $run["inputoid"] . "." . $run["inputname"];
   if(is_readable($cache . $ds . $run["inputoid"] . "." . $run["inputname"])) {
     DBExec($c, "commit", "Autojudging(exportcommit)");
     echo "Getting problem package file from local cache: " . $cache . $ds . $run["inputoid"] . "." . $run["inputname"] . "\n";
@@ -265,7 +268,7 @@ while(42) {
       $pd = 'problemdatalocal';
     }
     chdir($dir . $ds . $pd . $ds . "limits");
-    $limits[$basename]=array();
+    $limits[$lkey]=array();
     $cont=false;
     foreach(glob($dir . $ds . $pd . $ds . "limits" .$ds . '*') as $file) {
       chmod($file,0700);
@@ -281,7 +284,7 @@ while(42) {
 	$cont=true;
 	break;
       }
-      $limits[$basename][basename($file)] = file('stdout',FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+      $limits[$lkey][basename($file)] = file('stdout',FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
     }
     if(!$cont) {
       $pd = 'problemdata';
@@ -333,10 +336,10 @@ while(42) {
     continue;
   }
   
-  if(!isset($limits[$basename][$run["extension"]][0]) || !is_numeric($limits[$basename][$run["extension"]][0]) ||
-     !isset($limits[$basename][$run["extension"]][1]) || !is_numeric($limits[$basename][$run["extension"]][1]) ||
-     !isset($limits[$basename][$run["extension"]][2]) || !is_numeric($limits[$basename][$run["extension"]][2]) ||
-     !isset($limits[$basename][$run["extension"]][3]) || !is_numeric($limits[$basename][$run["extension"]][3]) ) {
+  if(!isset($limits[$lkey][$run["extension"]][0]) || !is_numeric($limits[$lkey][$run["extension"]][0]) ||
+     !isset($limits[$lkey][$run["extension"]][1]) || !is_numeric($limits[$lkey][$run["extension"]][1]) ||
+     !isset($limits[$lkey][$run["extension"]][2]) || !is_numeric($limits[$lkey][$run["extension"]][2]) ||
+     !isset($limits[$lkey][$run["extension"]][3]) || !is_numeric($limits[$lkey][$run["extension"]][3]) ) {
     echo "Failed to find proper limits information for the problem -- please check the problem package\n";
     DBGiveUpRunAutojudging($contest, $site, $number, $ip, "error: problem package file is invalid (6)");
     continue;
@@ -377,14 +380,14 @@ while(42) {
   @chmod('allerr', 0600);
 
   chmod($script, 0700);
-  $ajtl = max(1, (int) trim($limits[$basename][$run["extension"]][0]));
-  $ajnruns = max(1, (int) trim($limits[$basename][$run["extension"]][1]));
+  $ajtl = max(1, (int) trim($limits[$lkey][$run["extension"]][0]));
+  $ajnruns = max(1, (int) trim($limits[$lkey][$run["extension"]][1]));
   $ajtimeout = false;
   $ex = ajtimeout($ajtl + 330) . escapeshellcmd($script) ." ".
     escapeshellarg($run["sourcename"])." ".
     escapeshellarg($basename) . " ".
-    escapeshellarg(trim($limits[$basename][$run["extension"]][0]))." ".
-    escapeshellarg(trim($limits[$basename][$run["extension"]][2]));
+    escapeshellarg(trim($limits[$lkey][$run["extension"]][0]))." ".
+    escapeshellarg(trim($limits[$lkey][$run["extension"]][2]));
   $ex .= " >stdout 2>stderr";
   @unlink('stdout');
   @unlink('stderr');
@@ -502,10 +505,10 @@ while(42) {
 	  $ex = ajtimeout(($ajtl + 30) * $ajnruns + 120) . escapeshellcmd($script) ." ".
 	    escapeshellarg($basename) . " ".
 	    escapeshellarg($dir . $ds . "input" . $ds . $file)." ".
-	    escapeshellarg(trim($limits[$basename][$run["extension"]][0]))." ".
-	    escapeshellarg(trim($limits[$basename][$run["extension"]][1]))." ".
-	    escapeshellarg(trim($limits[$basename][$run["extension"]][2]))." ".
-	    escapeshellarg(trim($limits[$basename][$run["extension"]][3]));
+	    escapeshellarg(trim($limits[$lkey][$run["extension"]][0]))." ".
+	    escapeshellarg(trim($limits[$lkey][$run["extension"]][1]))." ".
+	    escapeshellarg(trim($limits[$lkey][$run["extension"]][2]))." ".
+	    escapeshellarg(trim($limits[$lkey][$run["extension"]][3]));
 	  $ex .= " >stdout 2>stderr";
 
 	  chdir($dir);

@@ -19,6 +19,14 @@
 
 require('header.php');
 
+// BRUTE: como em admin/report/stat.php, a imagem vai embutida e os .txt/.png nao ficam no docroot sem login
+function statimg($png) {
+	$data = @file_get_contents($png);
+	@unlink($png);
+	@unlink(preg_replace('/\.png$/', '.txt', $png));
+	return $data === false ? '' : 'data:image/png;base64,' . base64_encode($data);
+}
+
 $d = DBRunReport($_SESSION["usertable"]["contestnumber"],$_SESSION["usertable"]["usersitenumber"]);
 
 echo "<center><h2>Statistics</h2></center>\n";
@@ -92,8 +100,8 @@ shell_exec("python3 ../../admin/report/piechart.py accepted_runs_by_problems.txt
 
 
 echo "<center><table><tr>";
-echo "<td><img alt='runs by problems' src=runs_by_problems.png width=500></td></tr>\n";
-echo "<td><img alt='accepted runs by problems' src=accepted_runs_by_problems.png width=500></td>\n";
+echo "<td><img alt='runs by problems' src='" . statimg('runs_by_problems.png') . "' width=500></td></tr>\n";
+echo "<td><img alt='accepted runs by problems' src='" . statimg('accepted_runs_by_problems.png') . "' width=500></td>\n";
 echo "</table> </center>";
 
 
@@ -234,8 +242,8 @@ shell_exec("python3 ../../admin/report/piechart.py accepted_runs_by_language.txt
 
 
 echo "<center><table><tr>";
-echo "<td><img alt='all runs by language' src=all_runs_by_language.png width=500></td></tr>\n";
-echo "<td><img alt='accepted runs by language' src=accepted_runs_by_language.png width=500></td>\n";
+echo "<td><img alt='all runs by language' src='" . statimg('all_runs_by_language.png') . "' width=500></td></tr>\n";
+echo "<td><img alt='accepted runs by language' src='" . statimg('accepted_runs_by_language.png') . "' width=500></td>\n";
 echo "</table> </center>";
 
 //----------------------------------------------------------
@@ -311,7 +319,7 @@ shell_exec("python3 ../../admin/report/piechart.py all_runs_by_answer.txt 'All R
 echo "</table></center>";
 
 echo "</td>";
-echo "<td><img alt='all runs by answer' src=all_runs_by_answer.png width=500></td></tr>\n";
+echo "<td><img alt='all runs by answer' src='" . statimg('all_runs_by_answer.png') . "' width=500></td></tr>\n";
 
 echo "</table></center>\n";
 
@@ -422,7 +430,7 @@ for($i=0;$i<count($values);$i++){
 shell_exec("python3 ../../admin/report/barplot.py runs_by_time_period.txt 'Runs by Time Period'");
 
 
-echo "<center><img alt=runs_by_time_period src=runs_by_time_period.png width=500></center>\n";
+echo "<center><img alt=runs_by_time_period src='" . statimg('runs_by_time_period.png') . "' width=500></center>\n";
 
 
 //------------------------------------------------
@@ -465,7 +473,7 @@ for($i=0;$i<count($values_ac);$i++){
 shell_exec("python3 ../../admin/report/barplot.py accepted_runs_by_time_period.txt 'Accepted Runs by Time Period'");
 
 
-echo "<center><img alt=runs_by_time_period src=accepted_runs_by_time_period.png width=500></center>\n";
+echo "<center><img alt=runs_by_time_period src='" . statimg('accepted_runs_by_time_period.png') . "' width=500></center>\n";
 
 
 include("$locr/footnote.php");

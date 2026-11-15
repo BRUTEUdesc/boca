@@ -217,7 +217,10 @@ if [ -d "$BOCADIR" ]; then
     # tudo www-data, menos .git (root, como o git que roda nele) e .env (root:www-data 640)
     find "$BOCADIR" -path "$BOCADIR/.git" -prune -o -path "$BOCADIR/.env" -prune -o ! -user www-data \
         -exec chown -h www-data:www-data {} +
-    if [ -f "$BOCADIR/.env" ]; then
+    # o diretorio e de www-data: um .env trocado por symlink levaria o chown/chmod para o alvo (ex.: /etc/shadow)
+    if [ -L "$BOCADIR/.env" ]; then
+        echo "    ATENÇÃO: $BOCADIR/.env é um symlink; não mexi nele (confira e recrie como arquivo comum)"
+    elif [ -f "$BOCADIR/.env" ]; then
         chown root:www-data "$BOCADIR/.env"
         chmod 640 "$BOCADIR/.env"
     fi

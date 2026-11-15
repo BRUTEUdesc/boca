@@ -68,6 +68,11 @@ function polygonRunJob($job) {
 		return 'error saving the problem: ' . trim(strip_tags(preg_replace("/.*alert\\('([^']*)'.*/s", '$1', $out)));
 	LOGLevel("Problem $num (" . $job['name'] . ") imported from Polygon problem " . (int)$job['pid'] .
 		 " package " . (int)$pk['id'] . " (revision " . (int)$pk['revision'] . ") by user " . $job['username'], 2);
+	// preenche basename/fullname a partir do problem.info, como a aba Problems do admin faz ao abrir; sem isso o
+	// problema novo fica com basename vazio e DBGetProblems o esconde dos times (lista, placar e submissao)
+	ob_start();
+	DBGetFullProblemData($contest, true);
+	ob_end_clean();
 	$GLOBALS['polygonimported'] = 'imported package revision ' . (int)$pk['revision'];
 	return '';
 }
