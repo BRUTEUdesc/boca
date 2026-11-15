@@ -228,8 +228,14 @@ if (isset($_POST["Submit3"]) && isset($_POST["problemnumber"]) &&
 		$colorname = trim($_POST["colorname"]);
 		$color = trim($_POST["color"]);
 
+		// BRUTE: reenvio do pacote de um problema que ja existe (e nao esta apagado) com a cor em branco mantem a cor
+		// atual (DBNewProblem nao mexe no que vem ''), como no upstream e no import do Polygon; so problema novo
+		// recebe a cor padrao do JSON
+		$keepcolor = DBGetRow("select 1 from problemtable where contestnumber=" . (int)$_SESSION["usertable"]["contestnumber"] .
+			" and problemnumber=" . (int)$problem_number . " and problemcolor <> '-1' and position('(DEL)' in problemfullname)=0", 0) != null;
+
 		// Se estiver vazio, pega a cor padrão do JSON
-		if ($colorname === "" || $color === "") {
+		if (!$keepcolor && ($colorname === "" || $color === "")) {
 			if (isset($default_colors[$problem_number])) {
 				if ($colorname === "") {
 					$colorname = $default_colors[$problem_number]["colorname"];
