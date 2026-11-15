@@ -34,6 +34,14 @@ if(!isset($_GET["oid"]) || !is_numeric($_GET["oid"]) || !isset($_GET["filename"]
 }
 
 $cf = globalconf();
+// BRUTE: a assinatura do link usa BOCA_KEY (.env); sem ela, qualquer usuario logado forjaria o link de qualquer
+// large object (pacote com as respostas, codigo de outro time). Sem chave (ou curta demais): nao baixa nada
+if(!is_string($cf["key"]) || strlen($cf["key"]) < 16) {
+	echo "<html><head><title>Download Page</title>";
+	LOGError("filedownload.php: BOCA_KEY missing or too short in .env; downloads disabled");
+	MSGError("Downloads are disabled: server misconfiguration (BOCA_KEY). Contact the staff.");
+	ForceLoad("index.php");
+}
 $uglysalt="30a2224c82dcf42e497e2a1f6bd6516b";
 $fname = decryptData(myrawurldecode($_GET["filename"]), $uglysalt . $cf["key"]);
 
