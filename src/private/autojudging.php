@@ -197,6 +197,15 @@ while(42) {
     DBGiveUpRunAutojudging($contest, $site, $number, $ip, "error: source file not defined");
     continue;
   }
+  // BRUTE: o fonte e gravado como root em <dir>/<nome do time>: nome com "/" ou ".." escreveria fora do diretorio,
+  // e um .zip seria tomado pelos scripts do problema como o pacote (o primeiro *.zip do diretorio). O envio ja
+  // normaliza o nome (team/run.php); isto cobre runs antigas e outros caminhos de criacao de run.
+  if(!preg_match('/\A[A-Za-z0-9_][A-Za-z0-9_.+-]{0,199}\z/', $run["sourcename"]) || preg_match('/\.zip\z/i', $run["sourcename"])) {
+    LogLevel("Autojudging: invalid source file name (run=$number, site=$site, contest=$contest)",1);
+    echo "Invalid source file name (contest=$contest, site=$site, run=$number)\n";
+    DBGiveUpRunAutojudging($contest, $site, $number, $ip, "error: invalid source file name");
+    continue;
+  }
   if($run["inputoid"]=="" || $run["inputname"]=="") {
     LogLevel("Autojudging: problem package not defined (run=$number, site=$site, contest=$contest)",1);
     echo "Package file not defined (contest=$contest, site=$site, run=$number)\n";

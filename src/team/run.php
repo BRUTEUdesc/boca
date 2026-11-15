@@ -110,6 +110,19 @@ if (isset($_POST["problem"]) && isset($_POST["language"]) &&
 	ForceLoad("../index.php");
       }
     }
+    // BRUTE: o nome vira caminho no autojudge (o fonte e gravado em <dir>/<nome>, como root): so letras, digitos,
+    // _ . + -, sem comecar por ponto ("../x" viraria escrita fora do diretorio). O envio com POST data/name chega
+    // aqui com o nome cru (o upload do formulario ja vem sem diretorio). .zip confundiria os scripts do problema,
+    // que procuram o pacote como o primeiro *.zip do diretorio.
+    $name = preg_replace('/\A\./', '_', preg_replace('/[^A-Za-z0-9_.+-]/', '_', $name));
+    if(preg_match('/\.zip\z/i', $name)) {
+      if(isset($_POST['name']) && $_POST['name'] != '') {
+	echo "\nRESULT: FILE NAME PROBLEM (CANNOT BE A .zip FILE)";
+	exit;
+      }
+      MSGError("File name cannot end with .zip.");
+      ForceLoad($runteam);
+    }
     if(strpos($name,' ') === true || strpos($temp,' ') === true || strpos($name,'/') === true || strpos($temp,'/') === true ||
        strpos($name,'`') === true || strpos($temp,'`') === true || strpos($name,'\'') === true || strpos($temp,'\'') === true ||
        strpos($name, "\"") === true || strpos($temp, "\"") === true || strpos($name,'$') === true || strpos($temp,'$') === true) {
