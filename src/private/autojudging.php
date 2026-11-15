@@ -171,7 +171,8 @@ while(42) {
   }
 
   echo "Entering directory $tmpdir (contest=$contest, site=$site, run=$number)\n";
-  // "Contact staff" decidido pelo compare (checker/interactor com FAIL ou crash): nao vira runtime error no fim
+  // "Contact staff" decidido pelo compare (checker/interactor com FAIL ou crash) ou por erro interno do script de
+  // run: nao vira runtime error no fim
   $cmpstaff = false;
   chdir($tmpdir);
   for($i=0; $i<5; $i++) {
@@ -458,6 +459,7 @@ while(42) {
     $retval = 7;
     $answer = "(Contact staff) autojudge: compile script timed out";
   } else if($retval != 0) {
+    if($retval >= 40) $cmpstaff = true; // erro do proprio script (ver o caso da execucao): Contact staff
     list($retval,$answer) = exitmsg($retval);
     $answer = "(WHILE COMPILING) " . $answer;
   } else {
@@ -608,6 +610,9 @@ while(42) {
 	  if($localretval != 0) {
 	    list($retval,$answer) = exitmsg($localretval);
 	    $answer = "(WHILE RUNNING) " . $answer;
+	    // BRUTE: 40+ nao e codigo do safeexec, e erro do proprio script (parametro, pacote, interactor/launcher que
+	    // nao sobe): fica Contact staff, nao vira "probably runtime error" no fim
+	    if($localretval >= 40) $cmpstaff = true;
 	    break;
 	  }
 	  if(is_file($dir . $ds . 'output' . $ds . $file)) {
