@@ -105,7 +105,7 @@ function ajtimedout($rc) {
 function ajbeat_start($contest, $site, $number, $ip) {
   if (!function_exists('proc_open') || !DBRunHasHeartbeat(DBConnect()))
     return null;
-  $f = @tempnam(sys_get_temp_dir(), 'ajbeat');
+  $f = @tempnam(sys_get_temp_dir(), 'bocabeat'); // /tmp/boca*: o run_aj apaga ao (re)iniciar o AJ (sobra de SIGKILL)
   $h = ($f === false) ? false : @proc_open(array(PHP_BINARY, __DIR__ . '/ajheartbeat.php', (string)(int)$contest,
       (string)(int)$site, (string)(int)$number, (string)$ip, (string)getmypid(), $f),
     array(0 => array('file', '/dev/null', 'r'), 1 => array('file', '/dev/null', 'w'), 2 => STDERR), $pipes);
