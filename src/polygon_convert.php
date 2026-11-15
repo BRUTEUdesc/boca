@@ -175,7 +175,8 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	if (!is_dir($tpl)) {
 		return polygon_convert_fail(null, "template nao encontrado em $tpl");
 	}
-	// interativo: run/ e compare/ deste diretorio substituem os do template (o resto e igual)
+	// interativo: run/interactive.sh e run/interact.c deste diretorio vao junto do template; os
+	// run/<ext> e compare/<ext> do template detectam o run/interactive.sh no zip
 	$itpl = __DIR__ . '/private/polygontemplate-interactive';
 	$zip = new ZipArchive();
 	if (!is_string($zipfile) || !is_file($zipfile) || filesize($zipfile) == 0 || $zip->open($zipfile, ZipArchive::RDONLY) !== true) {
@@ -210,7 +211,7 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	}
 	// interativo: <assets><interactor><source path="files/interactor.cpp" type="cpp.*"/>. O fonte vai
 	// para run/interactor.cpp (com o testlib.h do pacote) e e compilado estatico para run/interactor,
-	// como o checker; run/ e compare/ vem do template interativo. So stdin/stdout, como o normal.
+	// como o checker, e o pacote ganha run/interactive.sh e run/interact.c. So stdin/stdout, como o normal.
 	$isrc = null;
 	if (count($root->xpath('//interactor') ?: array()) > 0) {
 		$inters = $root->xpath('/problem/assets/interactor') ?: array();
@@ -278,7 +279,7 @@ function polygon_convert_package($zipfile, $idx, $javafactor = 3, $pythonfactor 
 	$pd = "$tmp/Problem_$idx";
 	$ok = polygon_copytree($tpl, $pd);
 	if ($isrc !== null) {
-		$ok = $ok && polygon_copytree($itpl, $pd); // sobrescreve run/* e compare/*
+		$ok = $ok && polygon_copytree($itpl, $pd); // acrescenta run/interactive.sh e run/interact.c
 	}
 	foreach (array('input', 'output', 'description', 'limits', 'compare', 'run') as $d) {
 		$ok = $ok && (is_dir("$pd/$d") || @mkdir("$pd/$d", 0755));
