@@ -57,9 +57,14 @@ function polygonRunJob($job) {
 	$param['inputfilepath'] = $conv[0];
 	$param['inputfilename'] = $conv[1];
 	$param['fake'] = 'f';
-	$param['colorname'] = $default_colors[$num]['colorname'] ?? 'Default Color';
-	$param['color'] = $default_colors[$num]['color'] ?? 'CCCCCC';
-	$param['autojudge'] = $autojudge;
+	// BRUTE: reimport mantem a cor, o nome da cor e o autojudge que o admin ja ajustou (DBNewProblem nao mexe no
+	// que vem ''); so problema novo (ou apagado) recebe os padroes. Erro na consulta: padroes, como antes
+	$r = polygon_db("select 1 from problemtable where contestnumber=\$1 and problemnumber=\$2 and problemcolor <> '-1' " .
+		"and position('(DEL)' in problemfullname)=0", array($contest, $num));
+	$keep = ($r !== false && pg_num_rows($r) > 0);
+	$param['colorname'] = $keep ? '' : ($default_colors[$num]['colorname'] ?? 'Default Color');
+	$param['color'] = $keep ? '' : ($default_colors[$num]['color'] ?? 'CCCCCC');
+	$param['autojudge'] = $keep ? '' : $autojudge;
 	ob_start(); // DBNewProblem escreve alert() em erro; aqui so interessa o retorno
 	$ret = DBNewProblem($contest, $param);
 	$out = ob_get_clean();
